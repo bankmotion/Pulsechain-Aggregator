@@ -7,4 +7,18 @@ export default defineConfig({
     open: true,
     host: '0.0.0.0',
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.ts',
+  },
+  build: {
+    outDir: 'build',
+    sourcemap: true,
+  },
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
+  },
 }); 
