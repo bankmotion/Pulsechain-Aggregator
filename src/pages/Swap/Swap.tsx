@@ -36,9 +36,17 @@ const Swap: React.FC = () => {
   const [chain, setChain] = useState<TokenType | null>(null);
   const [selectType, setSelectType] = useState<"from" | "to" | null>(null);
   const [searchChain, setSearchChain] = useState<string>("");
+  const [searchToken, setSearchToken] = useState<string>("");
 
-  const { allChains, fromToken, toToken, quote, fromAmount, slippage } =
-    useAppSelector((state) => state.swap);
+  const {
+    allChains,
+    fromToken,
+    toToken,
+    quote,
+    fromAmount,
+    slippage,
+    availableTokens,
+  } = useAppSelector((state) => state.swap);
 
   const outputAmount =
     quote?.outputAmount && toToken?.decimals
@@ -97,7 +105,15 @@ const Swap: React.FC = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    console.log(fromToken?.address, toToken?.address, fromAmount);
+    console.log(fromToken, toToken, fromAmount);
+
+    if (
+      fromToken?.blockchainNetwork !== "pulsechain" ||
+      toToken?.blockchainNetwork !== "pulsechain"
+    ) {
+      return;
+    }
+
     if (fromToken?.address && toToken?.address && fromAmount) {
       dispatch(setQuote(null));
       // Clear any existing timeout and interval
@@ -193,8 +209,8 @@ const Swap: React.FC = () => {
                 whileHover={{ rotate: 90 }}
                 transition={{ duration: 0.3 }}
               >
-                <Cog6ToothIcon 
-                  className="h-5 w-5 text-gray-400 cursor-pointer" 
+                <Cog6ToothIcon
+                  className="h-5 w-5 text-gray-400 cursor-pointer"
                   onClick={() => setIsSlippagePopupOpen(true)}
                 />
               </motion.div>
@@ -254,35 +270,44 @@ const Swap: React.FC = () => {
                   </div>
                 )}
               </motion.button>
-              <motion.input
-                whileFocus={{ scale: 1.02 }}
-                type="text"
-                placeholder="Enter an Amount"
-                value={
-                  fromAmount
-                    ? fromAmount.includes(".")
-                      ? fromAmount
-                          .split(".")[0]
-                          .replace(/\B(?=(\d{3})+(?!\d))/g, ",") +
-                        "." +
-                        fromAmount.split(".")[1]
-                      : Number(fromAmount).toLocaleString()
-                    : ""
-                }
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9.]/g, "");
-                  // Only allow one decimal point
-                  const parts = value.split(".");
-                  if (parts.length > 2) {
-                    dispatch(
-                      setFromAmount(parts[0] + "." + parts.slice(1).join(""))
-                    );
-                  } else {
-                    dispatch(setFromAmount(value));
+              <motion.div className="flex flex-col items-end justify-center gap-2">
+                <motion.input
+                  whileFocus={{ scale: 1.02 }}
+                  type="text"
+                  placeholder="Enter an Amount"
+                  value={
+                    fromAmount
+                      ? fromAmount.includes(".")
+                        ? fromAmount
+                            .split(".")[0]
+                            .replace(/\B(?=(\d{3})+(?!\d))/g, ",") +
+                          "." +
+                          fromAmount.split(".")[1]
+                        : Number(fromAmount).toLocaleString()
+                      : ""
                   }
-                }}
-                className="bg-transparent text-right w-1/2 outline-none text-xl placeholder-gray-400 font-medium"
-              />
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9.]/g, "");
+                    // Only allow one decimal point
+                    const parts = value.split(".");
+                    if (parts.length > 2) {
+                      dispatch(
+                        setFromAmount(parts[0] + "." + parts.slice(1).join(""))
+                      );
+                    } else {
+                      dispatch(setFromAmount(value));
+                    }
+                  }}
+                  className="bg-transparent text-right w-full outline-none text-xl placeholder-gray-400 font-medium"
+                />
+                <div className="text-sm text-gray-400">
+                  {fromToken?.price
+                    ? `$${(
+                        Number(fromToken?.price) * Number(fromAmount)
+                      ).toFixed(3)}`
+                    : "0.00$"}
+                </div>
+              </motion.div>
             </div>
 
             <div className="relative">
@@ -351,21 +376,34 @@ const Swap: React.FC = () => {
                   </div>
                 )}
               </motion.button>
-              <motion.div className="bg-transparent text-right w-1/2 outline-none text-xl placeholder-gray-400 font-medium">
-                {outputAmount ? (
-                  outputAmount
-                    .toString()
-                    .split(".")[0]
-                    .replace(/\B(?=(\d{3})+(?!\d))/g, ",") +
-                  "." +
-                  outputAmount.toString().split(".")[1]
-                ) : fromToken && toToken && fromAmount ? (
-                  <div className="flex items-center justify-end">
-                    <div className="w-20 h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
-                  </div>
-                ) : (
-                  "0.00"
-                )}
+              <motion.div className="bg-transparent text-right w-1/2 outline-none text-xl placeholder-gray-400 font-medium flex flex-col items-end justify-center gap-2">
+                <div className="text-lg font-medium">
+                  {outputAmount ? (
+                    outputAmount
+                      .toString()
+                      .split(".")[0]
+                      .replace(/\B(?=(\d{3})+(?!\d))/g, ",") +
+                    "." +
+                    outputAmount.toString().split(".")[1]
+                  ) : fromToken && toToken && fromAmount ? (
+                    <div className="flex items-center justify-end">
+                      <div className="w-28 h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
+                    </div>
+                  ) : (
+                    "0.00"
+                  )}
+                </div>
+                <div className="text-sm text-gray-400">
+                  {outputAmount && toToken?.price ? (
+                    `$${(Number(toToken?.price) * Number(outputAmount)).toFixed(
+                      3
+                    )}`
+                  ) : toToken && fromAmount && fromAmount ? (
+                    <div className="w-16 h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
+                  ) : (
+                    "0.00$"
+                  )}
+                </div>
               </motion.div>
             </div>
           </motion.div>
@@ -376,9 +414,26 @@ const Swap: React.FC = () => {
             <motion.button
               whileHover={{ scale: 1.05, backgroundColor: "#22c55e" }}
               whileTap={{ scale: 0.95 }}
-              className="flex-1 bg-green-500 text-black px-4 py-3 rounded-[20px] min-w-[200px] font-semibold"
+              disabled={
+                !fromToken ||
+                !toToken ||
+                fromToken.blockchainNetwork !== "pulsechain" ||
+                toToken.blockchainNetwork !== "pulsechain" ||
+                Number(fromAmount) <= 0 ||
+                Number(outputAmount) <= 0
+              }
+              className="flex-1 bg-green-500 text-black px-4 py-3 rounded-[20px] min-w-[200px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {selectType === "from" ? "Select From Token" : "Select To Token"}
+              {fromToken &&
+              toToken &&
+              (fromToken.blockchainNetwork !== "pulsechain" ||
+                toToken.blockchainNetwork !== "pulsechain")
+                ? "Only Pulsechain is supported"
+                : fromToken && toToken && Number(fromAmount) > 0
+                ? "Swap"
+                : fromToken && toToken
+                ? "Enter an Amount"
+                : "Select Tokens"}
             </motion.button>
           </div>
         </div>
@@ -394,6 +449,13 @@ const Swap: React.FC = () => {
         selectType={selectType}
         searchChain={searchChain}
         setSearchChain={setSearchChain}
+        searchToken={searchToken}
+        setSearchToken={setSearchToken}
+        availableTokens={availableTokens.filter(
+          (token) =>
+            token.symbol.toLowerCase().includes(searchToken.toLowerCase()) ||
+            token.address.toLowerCase().includes(searchToken.toLowerCase())
+        )}
       />
 
       <SlippagePopup

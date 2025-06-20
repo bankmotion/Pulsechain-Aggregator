@@ -14,6 +14,9 @@ interface TokenPopupProps {
   selectType: "from" | "to" | null;
   searchChain: string;
   setSearchChain: (searchChain: string) => void;
+  searchToken: string;
+  setSearchToken: (searchToken: string) => void;
+  availableTokens: TokenType[];
 }
 
 const TokenPopup = ({
@@ -26,13 +29,16 @@ const TokenPopup = ({
   selectType,
   searchChain,
   setSearchChain,
+  searchToken,
+  setSearchToken,
+  availableTokens,
 }: TokenPopupProps) => {
-  const { availableTokens, allChains } = useAppSelector((state) => state.swap);
+  const { allChains } = useAppSelector((state) => state.swap);
 
   const dispatch = useAppDispatch();
 
   const handleSetToken = (token: TokenType) => {
-    console.log(token)
+    console.log(token);
     if (selectType === "from") {
       dispatch(setFromToken(token));
     } else {
@@ -163,6 +169,8 @@ const TokenPopup = ({
                     <input
                       type="text"
                       placeholder="Search tokens"
+                      value={searchToken}
+                      onChange={(e) => setSearchToken(e.target.value)}
                       className="w-full bg-[#2b2e4a] text-white px-3 py-2 rounded-lg pl-8 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/50 transition-all"
                     />
                     <svg
