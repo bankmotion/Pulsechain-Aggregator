@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import CustomConnectButton from "../components/CustomConnectButton";
 
 const Header = () => {
   return (
@@ -54,13 +55,7 @@ const Header = () => {
           transition={{ duration: 0.5 }}
           className="w-8 h-8 rounded-full bg-gray-600 cursor-pointer"
         />
-        <motion.button
-          whileHover={{ scale: 1.05, backgroundColor: "#4ade80" }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-green-400 text-black px-4 py-2 rounded-xl"
-        >
-          Connect Wallet
-        </motion.button>
+        <CustomConnectButton />
       </div>
     </motion.div>
   );
