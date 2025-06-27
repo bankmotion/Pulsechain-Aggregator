@@ -105,8 +105,6 @@ const Swap: React.FC = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    console.log(fromToken, toToken, fromAmount);
-
     if (
       fromToken?.blockchainNetwork !== "pulsechain" ||
       toToken?.blockchainNetwork !== "pulsechain"

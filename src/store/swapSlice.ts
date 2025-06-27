@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { QuoteType, TokenType } from "../types/Swap";
 import { ethers } from "ethers";
+import { ZeroAddress } from "../const/swap";
 
 interface SwapState {
   allChains: TokenType[];
@@ -145,9 +146,11 @@ const swapSlice = createSlice({
 
     builder.addCase(getQuote.pending, (state) => {});
     builder.addCase(getQuote.fulfilled, (state, action) => {
-      console.log(action.payload, action.meta.arg);
       if (
-        action.meta.arg.tokenInAddress === state.fromToken?.address &&
+        action.meta.arg.tokenInAddress ===
+          (state.fromToken?.address === ZeroAddress
+            ? "PLS"
+            : state.fromToken?.address) &&
         action.meta.arg.tokenOutAddress === state.toToken?.address &&
         action.meta.arg.amount === Number(state.fromAmount) &&
         action.meta.arg.allowedSlippage === state.slippage &&
@@ -160,7 +163,12 @@ const swapSlice = createSlice({
   },
 });
 
-export const { setFromToken, setToToken, setFromAmount, setQuote, setSlippage } =
-  swapSlice.actions;
+export const {
+  setFromToken,
+  setToToken,
+  setFromAmount,
+  setQuote,
+  setSlippage,
+} = swapSlice.actions;
 
 export default swapSlice.reducer;
