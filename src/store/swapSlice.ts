@@ -196,7 +196,7 @@ export const getQuote = createAsyncThunk(
     fromDecimal: number;
   }) => {
     const response = await fetch(
-      `http://156.227.0.15:3000/quote?tokenInAddress=${tokenInAddress}&tokenOutAddress=${tokenOutAddress}&amount=${ethers.parseUnits(
+      `https://pt-quote-api.vercel.app/quote?tokenInAddress=${tokenInAddress}&tokenOutAddress=${tokenOutAddress}&amount=${ethers.parseUnits(
         amount.toString(),
         fromDecimal
       )}&allowedSlippage=${allowedSlippage}&fromDecimal=${fromDecimal}`
