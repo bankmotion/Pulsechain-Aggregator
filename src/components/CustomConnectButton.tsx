@@ -1,26 +1,19 @@
-import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { motion } from "framer-motion";
-import { useWalletDebug } from "../hooks/useWalletDebug";
+import React from "react";
+import useWallet from "../hooks/useWallet";
 
-const CustomConnectButton = () => {
-  const { isConnected, handleDisconnect } = useWalletDebug();
+const CustomConnectButton: React.FC = () => {
+  const { connectWallet } = useWallet();
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-    >
-      <ConnectButton
-        chainStatus="icon"
-        showBalance={false}
-        accountStatus={{
-          smallScreen: 'avatar',
-          largeScreen: 'full',
-        }}
-        label="Connect Wallet"
-      />
-    </motion.div>
+    <div>
+      <button
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+        onClick={connectWallet}
+      >
+        Connect Wallet
+      </button>
+    </div>
   );
 };
 
-export default CustomConnectButton; 
+export default CustomConnectButton;

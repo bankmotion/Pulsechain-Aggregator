@@ -25,8 +25,8 @@ const QuotePanel = () => {
   const impact =
     fromToken && toToken
       ? ((toTokenAmount -
-          (Number(fromAmount) * fromToken?.price) / toToken?.price) /
-          ((Number(fromAmount) * fromToken?.price) / toToken?.price)) *
+          (Number(fromAmount) * fromToken?.usdPrice) / toToken?.usdPrice) /
+          ((Number(fromAmount) * fromToken?.usdPrice) / toToken?.usdPrice)) *
         100
       : 0;
 
@@ -63,7 +63,7 @@ const QuotePanel = () => {
           <div className="flex justify-between">
             <span className="text-white/50">Network fee</span>
             <span className="text-white/80">
-              {quote?.gasUSDEstimated.toFixed(3)}$
+              {quote?.gasUSDEstimated?.toFixed(3)}$
             </span>
           </div>
           <div className="flex justify-between">

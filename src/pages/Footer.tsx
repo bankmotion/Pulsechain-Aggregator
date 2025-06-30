@@ -25,7 +25,7 @@ const Footer = () => {
         ))}
       </div>
       <p>
-        © Copyright Rubic 2025,{" "}
+        © Copyright  2025,{" "}
         <motion.a
           whileHover={{ color: "#4ade80" }}
           href="#"
