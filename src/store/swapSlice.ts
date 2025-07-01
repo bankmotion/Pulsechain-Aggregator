@@ -27,6 +27,10 @@ interface SwapState {
   fromAmount: string;
   quote: QuoteType | null;
   slippage: number;
+  // Balance state
+  fromTokenBalance: string;
+  toTokenBalance: string;
+  nativeBalance: string;
   // Swap execution state
   isApproving: boolean;
   isSwapping: boolean;
@@ -43,6 +47,10 @@ const initialState: SwapState = {
   fromAmount: "",
   quote: null,
   slippage: 0.5,
+  // Balance state
+  fromTokenBalance: "0",
+  toTokenBalance: "0",
+  nativeBalance: "0",
   // Swap execution state
   isApproving: false,
   isSwapping: false,
@@ -50,6 +58,57 @@ const initialState: SwapState = {
   // Transaction tracking
   transactionHash: null,
 };
+
+// Get token balance
+export const getTokenBalance = createAsyncThunk(
+  "swap/getTokenBalance",
+  async ({
+    tokenAddress,
+    userAddress,
+    decimals,
+  }: {
+    tokenAddress: string;
+    userAddress: string;
+    decimals: number;
+  }) => {
+    if (!userAddress) return "0";
+
+    try {
+      if (tokenAddress === ZeroAddress) {
+        // Get native balance
+        const provider = new ethers.BrowserProvider((window as any).provider);
+        const balance = await provider.getBalance(userAddress);
+        return ethers.formatEther(balance);
+      } else {
+        // Get ERC20 token balance
+        const provider = new ethers.BrowserProvider((window as any).provider);
+        const contract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
+        const balance = await contract.balanceOf(userAddress);
+        return ethers.formatUnits(balance, decimals);
+      }
+    } catch (error) {
+      console.error("Error getting token balance:", error);
+      return "0";
+    }
+  }
+);
+
+// Get native balance
+export const getNativeBalance = createAsyncThunk(
+  "swap/getNativeBalance",
+  async (userAddress: string) => {
+    if (!userAddress) return "0";
+
+    try {
+      const provider = new ethers.BrowserProvider((window as any).provider);
+      const balance = await provider.getBalance(userAddress);
+      return ethers.formatEther(balance);
+    } catch (error) {
+      console.error("Error getting native balance:", error);
+      return "0";
+    }
+  }
+);
 
 // Check token allowance
 export const checkTokenAllowance = createAsyncThunk(
@@ -234,6 +293,16 @@ export const swapSlice = createSlice({
     setSlippage: (state, action) => {
       state.slippage = action.payload;
     },
+    // Set balances
+    setFromTokenBalance: (state, action) => {
+      state.fromTokenBalance = action.payload;
+    },
+    setToTokenBalance: (state, action) => {
+      state.toTokenBalance = action.payload;
+    },
+    setNativeBalance: (state, action) => {
+      state.nativeBalance = action.payload;
+    },
     // Set transaction hash
     setTransactionHash: (state, action) => {
       state.transactionHash = action.payload;
@@ -345,6 +414,24 @@ export const swapSlice = createSlice({
       .addCase(checkTokenAllowance.rejected, (state, action) => {
         state.isApproved = false;
       });
+
+    // Handle getTokenBalance
+    builder
+      .addCase(getTokenBalance.fulfilled, (state, action) => {
+        // This will be handled in the component based on which token is being checked
+      })
+      .addCase(getTokenBalance.rejected, (state, action) => {
+        console.error("Failed to get token balance:", action.error);
+      });
+
+    // Handle getNativeBalance
+    builder
+      .addCase(getNativeBalance.fulfilled, (state, action) => {
+        state.nativeBalance = action.payload;
+      })
+      .addCase(getNativeBalance.rejected, (state, action) => {
+        console.error("Failed to get native balance:", action.error);
+      });
   },
 });
 
@@ -356,6 +443,9 @@ export const {
   setFromAmount,
   setQuote,
   setSlippage,
+  setFromTokenBalance,
+  setToTokenBalance,
+  setNativeBalance,
   setTransactionHash,
   resetSwapState,
 } = swapSlice.actions;

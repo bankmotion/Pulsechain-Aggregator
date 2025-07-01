@@ -13,6 +13,7 @@ interface SwapButtonProps {
   outputAmount: number;
   quote: any;
   onSwap: () => void;
+  hasSufficientBalance: boolean;
 }
 
 const SwapButton: React.FC<SwapButtonProps> = ({
@@ -22,6 +23,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
   outputAmount,
   quote,
   onSwap,
+  hasSufficientBalance,
 }) => {
   const { isSwapping, isApproved, isApproving } = useAppSelector(
     (state) => state.swap
@@ -37,6 +39,9 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         toToken.blockchainNetwork !== "pulsechain")
     ) {
       return "Only Pulsechain is supported";
+    }
+    if (fromToken && toToken && Number(fromAmount) > 0 && !hasSufficientBalance) {
+      return "Insufficient Balance";
     }
     if (fromToken && toToken && Number(fromAmount) > 0 && quote?.calldata) {
       return fromToken.address !== ZeroAddress
@@ -63,7 +68,8 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     Number(outputAmount) <= 0 ||
     !quote?.calldata ||
     isSwapping ||
-    isApproving;
+    isApproving ||
+    !hasSufficientBalance;
 
   return (
     <div className="flex items-center mt-3 sm:mt-4">

@@ -14,6 +14,10 @@ import {
   approveTokenAction,
   executeSwapAction,
   checkTokenAllowance,
+  getTokenBalance,
+  getNativeBalance,
+  setFromTokenBalance,
+  setToTokenBalance,
 } from "../../store/swapSlice";
 import { TokenType } from "../../types/Swap";
 import Footer from "../Footer";
@@ -54,12 +58,27 @@ const Swap: React.FC = () => {
     isSwapping,
     isApproved,
     transactionHash,
+    fromTokenBalance,
+    toTokenBalance,
+    nativeBalance,
   } = useAppSelector((state) => state.swap);
 
   const outputAmount =
     quote?.outputAmount && toToken?.decimals
       ? Number(ethers.formatUnits(quote.outputAmount, toToken.decimals))
       : 0;
+
+  // Check if user has sufficient balance
+  const hasSufficientBalance = () => {
+    if (!fromToken || !fromAmount) return false;
+    
+    const requiredAmount = parseFloat(fromAmount);
+    const currentBalance = fromToken.address === ZeroAddress 
+      ? parseFloat(nativeBalance) 
+      : parseFloat(fromTokenBalance);
+    
+    return currentBalance >= requiredAmount;
+  };
 
   const handleExchangeTokenPlace = () => {
     if (fromToken && toToken) {
@@ -74,6 +93,12 @@ const Swap: React.FC = () => {
     try {
       if (!account) {
         toast.error("No account found");
+        return;
+      }
+
+      // Check balance before proceeding
+      if (!hasSufficientBalance()) {
+        toast.error("Insufficient balance");
         return;
       }
 
@@ -145,6 +170,46 @@ const Swap: React.FC = () => {
       setChain({ ...allChains[0] });
     }
   }, [allChains, dispatch, chain]);
+
+  // Get native balance when account changes
+  useEffect(() => {
+    if (account) {
+      dispatch(getNativeBalance(account));
+    }
+  }, [dispatch, account]);
+
+  // Get token balances when tokens change
+  useEffect(() => {
+    if (fromToken?.address && account) {
+      dispatch(
+        getTokenBalance({
+          tokenAddress: fromToken.address,
+          userAddress: account,
+          decimals: fromToken.decimals,
+        })
+      ).then((result) => {
+        if (result.payload) {
+          dispatch(setFromTokenBalance(result.payload as string));
+        }
+      });
+    }
+  }, [dispatch, fromToken?.address, fromToken?.decimals, account]);
+
+  useEffect(() => {
+    if (toToken?.address && account) {
+      dispatch(
+        getTokenBalance({
+          tokenAddress: toToken.address,
+          userAddress: account,
+          decimals: toToken.decimals,
+        })
+      ).then((result) => {
+        if (result.payload) {
+          dispatch(setToTokenBalance(result.payload as string));
+        }
+      });
+    }
+  }, [dispatch, toToken?.address, toToken?.decimals, account]);
 
   // Get token prices
   useEffect(() => {
@@ -276,7 +341,7 @@ const Swap: React.FC = () => {
     >
       <Header />
 
-      <motion.div className="w-full max-w-md h-[calc(100vh-200px)] flex flex-col min-w-[320px] sm:min-w-[600px] mt-4 sm:mt-10">
+      <motion.div className="w-full max-w-md h-[calc(100vh-200px)] max-h-[80vh] sm:max-h-none flex flex-col min-w-[320px] sm:min-w-[600px] mt-4 sm:mt-10 overflow-y-auto">
         <div className="flex flex-col bg-[#2b2e4a] rounded-2xl p-3 sm:p-6 w-full">
           <SwapHeader
             slippage={slippage}
@@ -302,6 +367,9 @@ const Swap: React.FC = () => {
             isLoadingQuote={
               !quote && fromToken && toToken && fromAmount ? true : false
             }
+            fromTokenBalance={fromTokenBalance}
+            toTokenBalance={toTokenBalance}
+            nativeBalance={nativeBalance}
           />
 
           {quote && fromToken && toToken && fromAmount && <QuotePanel />}
@@ -320,6 +388,7 @@ const Swap: React.FC = () => {
             outputAmount={outputAmount}
             quote={quote}
             onSwap={handleSwap}
+            hasSufficientBalance={hasSufficientBalance()}
           />
         </div>
       </motion.div>
