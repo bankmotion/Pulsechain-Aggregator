@@ -66,13 +66,13 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     isApproving;
 
   return (
-    <div className="flex items-center mt-4">
+    <div className="flex items-center mt-3 sm:mt-4">
       <motion.button
         whileHover={{ scale: 1.05, backgroundColor: "#22c55e" }}
         whileTap={{ scale: 0.95 }}
         disabled={isDisabled}
         onClick={onSwap}
-        className="flex-1 bg-green-500 text-black px-4 py-3 rounded-[20px] min-w-[200px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex-1 bg-green-500 text-black px-3 sm:px-4 py-2.5 sm:py-3 rounded-[16px] sm:rounded-[20px] min-w-[160px] sm:min-w-[200px] font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {getButtonText()}
       </motion.button>

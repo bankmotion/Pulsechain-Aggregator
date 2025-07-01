@@ -16,8 +16,8 @@ const TokenSwapButton: React.FC<TokenSwapButtonProps> = ({ onSwap }) => {
         transition={{ duration: 0.3 }}
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer"
       >
-        <div className="bg-[#1a1c2c] p-2 rounded-full shadow-lg flex items-center justify-center">
-          <ArrowsUpDownIcon className="h-5 w-5 text-gray-400" />
+        <div className="bg-[#1a1c2c] p-1.5 sm:p-2 rounded-full shadow-lg flex items-center justify-center">
+          <ArrowsUpDownIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
         </div>
       </motion.div>
     </div>

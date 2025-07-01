@@ -63,12 +63,12 @@ const AmountInput: React.FC<AmountInputProps> = ({
   };
 
   return (
-    <motion.div className="flex flex-col items-end justify-center gap-2">
+    <motion.div className="flex flex-col items-end justify-center gap-2 w-full sm:w-auto">
       {isOutput ? (
-        <div className="text-lg font-medium">
+        <div className="text-base sm:text-lg font-medium">
           {isLoading ? (
             <div className="flex items-center justify-end">
-              <div className="w-28 h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
+              <div className="w-20 sm:w-28 h-5 sm:h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
             </div>
           ) : (
             getDisplayValue()
@@ -81,12 +81,12 @@ const AmountInput: React.FC<AmountInputProps> = ({
           placeholder="Enter an Amount"
           value={getDisplayValue()}
           onChange={handleInputChange}
-          className="bg-transparent text-right w-full outline-none text-xl placeholder-gray-400 font-medium"
+          className="bg-transparent text-right w-full outline-none text-lg sm:text-xl placeholder-gray-400 font-medium"
         />
       )}
-      <div className="text-sm text-gray-400">
+      <div className="text-xs sm:text-sm text-gray-400">
         {isLoading ? (
-          <div className="w-16 h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
+          <div className="w-12 sm:w-16 h-5 sm:h-6 bg-gray-600 rounded-full animate-pulse opacity-30"></div>
         ) : (
           getPriceDisplay()
         )}

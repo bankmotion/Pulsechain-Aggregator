@@ -272,12 +272,12 @@ const Swap: React.FC = () => {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-screen bg-[#1a1c2c] text-white flex flex-col items-center justify-start px-4 font-['Red_Hat_Display']"
+      className="min-h-screen bg-[#1a1c2c] text-white flex flex-col items-center justify-start px-2 sm:px-4 font-['Red_Hat_Display']"
     >
       <Header />
 
-      <motion.div className="w-full max-w-md h-[calc(100vh-200px)] flex flex-col min-w-[600px] mt-10">
-        <div className="flex flex-col bg-[#2b2e4a] rounded-2xl p-6 w-full">
+      <motion.div className="w-full max-w-md h-[calc(100vh-200px)] flex flex-col min-w-[320px] sm:min-w-[600px] mt-4 sm:mt-10">
+        <div className="flex flex-col bg-[#2b2e4a] rounded-2xl p-3 sm:p-6 w-full">
           <SwapHeader
             slippage={slippage}
             onSlippageClick={() => setIsSlippagePopupOpen(true)}
@@ -347,8 +347,6 @@ const Swap: React.FC = () => {
         isOpen={isSlippagePopupOpen}
         onClose={() => setIsSlippagePopupOpen(false)}
       />
-
-      <Footer />
     </motion.div>
   );
 };

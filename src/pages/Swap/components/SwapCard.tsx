@@ -31,9 +31,9 @@ const SwapCard: React.FC<SwapCardProps> = ({
   isLoadingQuote,
 }) => {
   return (
-    <motion.div className="bg-[#1e2030] rounded-xl p-4 flex-grow relative gap-2 flex flex-col">
+    <motion.div className="bg-[#1e2030] rounded-xl p-3 sm:p-4 flex-grow relative gap-2 flex flex-col">
       {/* From Token Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <TokenSelector
           token={fromToken}
           allChains={allChains}
@@ -52,7 +52,7 @@ const SwapCard: React.FC<SwapCardProps> = ({
       <TokenSwapButton onSwap={onTokenSwap} />
 
       {/* To Token Section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <TokenSelector
           token={toToken}
           allChains={allChains}
