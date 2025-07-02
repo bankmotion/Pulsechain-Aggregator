@@ -319,7 +319,16 @@ export const swapSlice = createSlice({
     builder
       .addCase(getAllChains.pending, (state) => {})
       .addCase(getAllChains.fulfilled, (state, action) => {
-        state.allChains = action.payload;
+        // Move PulseChain to the first position if present
+        const pulseIndex = action.payload.findIndex(
+          (chain: any) => chain.symbol === "PLS"
+        );
+        if (pulseIndex > -1) {
+          const [pulseChain] = action.payload.splice(pulseIndex, 1);
+          state.allChains = [pulseChain, ...action.payload];
+        } else {
+          state.allChains = action.payload;
+        }
       })
       .addCase(getAllChains.rejected, (state, action) => {
         console.error("Failed to get all chains:", action.error);
@@ -339,9 +348,27 @@ export const swapSlice = createSlice({
     builder
       .addCase(getQuote.pending, (state) => {})
       .addCase(getQuote.fulfilled, (state, action) => {
-        console.log("action.payload", action.payload);
         if (!action.payload.error) {
-          state.quote = action.payload;
+          const isFromTokenValid =
+            state.fromToken?.address.toLowerCase() ===
+              action.meta.arg.tokenInAddress.toLowerCase() ||
+            (state.fromToken?.address === ZeroAddress &&
+              action.meta.arg.tokenInAddress === "PLS");
+
+          const isToTokenValid =
+            state.toToken?.address.toLowerCase() ===
+              action.meta.arg.tokenOutAddress.toLowerCase() ||
+            (state.toToken?.address === ZeroAddress &&
+              action.meta.arg.tokenOutAddress === "PLS");
+
+          const otherValidation =
+            state.fromToken?.decimals === action.meta.arg.fromDecimal &&
+            state.slippage === action.meta.arg.allowedSlippage &&
+            Number(state.fromAmount) === action.meta.arg.amount;
+
+          if (isFromTokenValid && isToTokenValid && otherValidation) {
+            state.quote = action.payload;
+          }
         }
       })
       .addCase(getQuote.rejected, (state, action) => {

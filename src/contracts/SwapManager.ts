@@ -252,7 +252,15 @@ export const getTransactionReceipt = async (txHash: string): Promise<any> => {
   try {
     const web3 = getWeb3();
     return await web3.eth.getTransactionReceipt(txHash);
-  } catch (error) {
+  } catch (error: any) {
+    // If the error is 'Transaction not found', treat as not found yet
+    if (
+      error.message &&
+      (error.message.includes("Transaction not found") ||
+        error.message.includes("not found"))
+    ) {
+      return null; // Don't throw, just return null so polling continues
+    }
     console.error("Failed to get transaction receipt:", error);
     throw new Error("Failed to fetch transaction receipt");
   }
@@ -266,6 +274,7 @@ export const waitForTransaction = async (
   confirmations: number = 1
 ): Promise<any> => {
   try {
+    console.log("Waiting for transaction:", txHash);
     // In web3 v4, we need to poll for transaction receipt
     let receipt = null;
     while (!receipt) {

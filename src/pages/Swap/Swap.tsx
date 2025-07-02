@@ -18,6 +18,7 @@ import {
   getNativeBalance,
   setFromTokenBalance,
   setToTokenBalance,
+  setNativeBalance,
 } from "../../store/swapSlice";
 import { TokenType } from "../../types/Swap";
 import Footer from "../Footer";
@@ -168,7 +169,14 @@ const Swap: React.FC = () => {
 
   useEffect(() => {
     if (allChains && allChains.length > 0 && !chain) {
-      setChain({ ...allChains[0] });
+      const pulseChain = allChains.find(
+        (chain) => chain.blockchainNetwork === "pulsechain"
+      );
+      if (pulseChain) {
+        setChain(pulseChain);
+      } else {
+        setChain({ ...allChains[0] });
+      }
     }
   }, [allChains, dispatch, chain]);
 
@@ -176,6 +184,8 @@ const Swap: React.FC = () => {
   useEffect(() => {
     if (account) {
       dispatch(getNativeBalance(account));
+    } else {
+      dispatch(setNativeBalance("0"));
     }
   }, [dispatch, account]);
 
@@ -193,6 +203,8 @@ const Swap: React.FC = () => {
           dispatch(setFromTokenBalance(result.payload as string));
         }
       });
+    } else {
+      dispatch(setFromTokenBalance("0"));
     }
   }, [dispatch, fromToken?.address, fromToken?.decimals, account]);
 
@@ -209,6 +221,8 @@ const Swap: React.FC = () => {
           dispatch(setToTokenBalance(result.payload as string));
         }
       });
+    } else {
+      dispatch(setToTokenBalance("0"));
     }
   }, [dispatch, toToken?.address, toToken?.decimals, account]);
 

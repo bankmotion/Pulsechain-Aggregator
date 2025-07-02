@@ -12,8 +12,6 @@ const TokenSwapButton: React.FC<TokenSwapButtonProps> = ({ onSwap }) => {
       <hr className="border-[#2b2e4a] my-2" />
       <motion.div
         onClick={onSwap}
-        whileHover={{ scale: 1.1, rotate: 180 }}
-        transition={{ duration: 0.3 }}
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer"
       >
         <div className="bg-[#1a1c2c] p-1.5 sm:p-2 rounded-full shadow-lg flex items-center justify-center">

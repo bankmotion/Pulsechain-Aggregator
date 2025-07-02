@@ -3,7 +3,7 @@ export const PulseChainConfig = {
   chainSymbol: "PLS",
   chainName: "PulseChain",
   chainSymbolFull: "Pulse",
-  chainIdHex: "0x17",
+  chainIdHex: "0x171",
   blockTime: 3000,
   providerList: ["https://rpc.pulsechain.com"],
   explorerUrl: "https://scan.pulsechain.com",

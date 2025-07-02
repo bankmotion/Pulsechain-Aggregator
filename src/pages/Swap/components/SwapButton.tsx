@@ -5,6 +5,7 @@ import { TokenType } from "../../../types/Swap";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
 import { useAppSelector } from "../../../store/hooks";
+import useWallet from "../../../hooks/useWallet";
 
 interface SwapButtonProps {
   fromToken: TokenType | null;
@@ -25,6 +26,7 @@ const SwapButton: React.FC<SwapButtonProps> = ({
   onSwap,
   hasSufficientBalance,
 }) => {
+  const { account } = useWallet();
   const { isSwapping, isApproved, isApproving } = useAppSelector(
     (state) => state.swap
   );
@@ -39,6 +41,9 @@ const SwapButton: React.FC<SwapButtonProps> = ({
         toToken.blockchainNetwork !== "pulsechain")
     ) {
       return "Only Pulsechain is supported";
+    }
+    if (!account) {
+      return "Connect Wallet";
     }
     if (fromToken && toToken && Number(fromAmount) > 0 && !hasSufficientBalance) {
       return "Insufficient Balance";
