@@ -71,12 +71,13 @@ const Swap: React.FC = () => {
   // Check if user has sufficient balance
   const hasSufficientBalance = () => {
     if (!fromToken || !fromAmount) return false;
-    
+
     const requiredAmount = parseFloat(fromAmount);
-    const currentBalance = fromToken.address === ZeroAddress 
-      ? parseFloat(nativeBalance) 
-      : parseFloat(fromTokenBalance);
-    
+    const currentBalance =
+      fromToken.address === ZeroAddress
+        ? parseFloat(nativeBalance)
+        : parseFloat(fromTokenBalance);
+
     return currentBalance >= requiredAmount;
   };
 
@@ -341,7 +342,7 @@ const Swap: React.FC = () => {
     >
       <Header />
 
-      <motion.div className="w-full max-w-md h-[calc(100vh-200px)] max-h-[80vh] sm:max-h-none flex flex-col min-w-[320px] sm:min-w-[600px] mt-4 sm:mt-10 overflow-y-auto">
+      <motion.div className="w-full max-w-md pb-10 sm:pb-0 flex flex-col min-w-[320px] sm:min-w-[600px] mt-4 sm:mt-10 overflow-y-auto">
         <div className="flex flex-col bg-[#2b2e4a] rounded-2xl p-3 sm:p-6 w-full">
           <SwapHeader
             slippage={slippage}
