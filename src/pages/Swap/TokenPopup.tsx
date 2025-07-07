@@ -64,7 +64,9 @@ const TokenPopup = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center p-3 sm:p-4 border-b border-gray-800">
-              <h2 className="text-base sm:text-lg font-semibold text-white">Select Token</h2>
+              <h2 className="text-base sm:text-lg font-semibold text-white">
+                Select Token
+              </h2>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-white transition-colors p-1"
@@ -139,7 +141,9 @@ const TokenPopup = ({
                             tempChain.type === "NATIVE") &&
                           tempChain.network
                             .toLowerCase()
-                            .includes(searchChain.toLowerCase())
+                            .includes(searchChain.toLowerCase()) &&
+                          (tempChain.network === "ETH" ||
+                            tempChain.network === "PULSECHAIN")
                       )
                       .map((tempChain, index) => (
                         <button
