@@ -13,7 +13,7 @@ const MinimumAmountWarning: React.FC<MinimumAmountWarningProps> = ({
   if (!error || !fromToken) return null;
 
   // Extract minimum amount from error message if it contains "minimum"
-  const isMinimumAmountError = error.toLowerCase().includes("minimum");
+  const isMinimumAmountError = error.toLowerCase().includes("minimum") || error.toLowerCase().includes("maximum");
   
   if (!isMinimumAmountError) return null;
 

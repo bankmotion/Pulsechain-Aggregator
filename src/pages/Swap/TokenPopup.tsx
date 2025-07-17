@@ -61,6 +61,9 @@ const TokenPopup = ({
         } else if (blockchainNetwork === "pulsechain") {
           setChain(ChainSymbol.PLS);
         }
+      } else {
+        // Set ETH as default when no token is selected
+        setChain(ChainSymbol.ETH);
       }
     }
   }, [isOpen, selectType, fromToken, toToken]);
