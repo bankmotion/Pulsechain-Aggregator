@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
 import React from "react";
-import { ZeroAddress } from "../../../const/swap";
+import { SupportTypes, ZeroAddress } from "../../../const/swap";
 import { TokenType } from "../../../types/Swap";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../store/store";
 import { useAppSelector } from "../../../store/hooks";
 import useWallet from "../../../hooks/useWallet";
+import { isBridgeOrPulse } from "../../../utils";
+
+import { ExchangeRateType } from "../../../types/Swap";
 
 interface SwapButtonProps {
   fromToken: TokenType | null;
@@ -15,6 +18,7 @@ interface SwapButtonProps {
   quote: any;
   onSwap: () => void;
   hasSufficientBalance: boolean;
+  exchangeRate?: ExchangeRateType | null;
 }
 
 const SwapButton: React.FC<SwapButtonProps> = ({
@@ -25,30 +29,47 @@ const SwapButton: React.FC<SwapButtonProps> = ({
   quote,
   onSwap,
   hasSufficientBalance,
+  exchangeRate,
 }) => {
   const { account } = useWallet();
   const { isSwapping, isApproved, isApproving } = useAppSelector(
     (state) => state.swap
   );
+
+  // Check if it's a bridge exchange
+  const isBridgeExchange =
+    exchangeRate &&
+    fromToken &&
+    toToken &&
+    isBridgeOrPulse(fromToken, toToken) === SupportTypes.Bridge;
+
   const getButtonText = () => {
     if (isSwapping || isApproving) {
       return "Processing...";
     }
-    if (
-      fromToken &&
-      toToken &&
-      (fromToken.blockchainNetwork !== "pulsechain" ||
-        toToken.blockchainNetwork !== "pulsechain")
-    ) {
-      return "Only Pulsechain is supported";
+    if (fromToken && toToken) {
+      if (isBridgeOrPulse(fromToken, toToken) === SupportTypes.NotSupported) {
+        return "This is not supported";
+      }
     }
     if (!account) {
       return "Connect Wallet";
     }
-    if (fromToken && toToken && Number(fromAmount) > 0 && !hasSufficientBalance) {
+    if (
+      fromToken &&
+      toToken &&
+      Number(fromAmount) > 0 &&
+      !hasSufficientBalance
+    ) {
       return "Insufficient Balance";
     }
-    if (fromToken && toToken && Number(fromAmount) > 0 && quote?.calldata) {
+
+    if (
+      fromToken &&
+      toToken &&
+      Number(fromAmount) > 0 &&
+      (quote?.calldata || isBridgeExchange)
+    ) {
       return fromToken.address !== ZeroAddress
         ? isApproved
           ? "Swap"
@@ -67,14 +88,13 @@ const SwapButton: React.FC<SwapButtonProps> = ({
   const isDisabled =
     !fromToken ||
     !toToken ||
-    fromToken.blockchainNetwork !== "pulsechain" ||
-    toToken.blockchainNetwork !== "pulsechain" ||
     Number(fromAmount) <= 0 ||
     Number(outputAmount) <= 0 ||
-    !quote?.calldata ||
+    (!quote?.calldata && !isBridgeExchange) ||
     isSwapping ||
     isApproving ||
-    !hasSufficientBalance;
+    !hasSufficientBalance ||
+    isBridgeOrPulse(fromToken, toToken) === SupportTypes.NotSupported;
 
   return (
     <div className="flex items-center mt-3 sm:mt-4">

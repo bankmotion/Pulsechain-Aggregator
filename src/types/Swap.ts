@@ -12,6 +12,16 @@ export interface TokenType {
   token_security: any;
   network_rank: number;
   price: number;
+  // Additional fields for currency support
+  hasExternalId?: boolean;
+  isExtraIdSupported?: boolean;
+  isFiat?: boolean;
+  featured?: boolean;
+  isStable?: boolean;
+  supportsFixedRate?: boolean;
+  buy?: boolean;
+  sell?: boolean;
+  legacyTicker?: string;
 }
 
 export interface QuoteType {
@@ -44,4 +54,59 @@ export interface RouteTokenType {
   symbol: string;
   decimals: number;
   chainId: number;
+}
+
+export interface CurrencyType {
+  ticker: string;
+  name: string;
+  image: string;
+  hasExternalId: boolean;
+  isExtraIdSupported: boolean;
+  isFiat: boolean;
+  featured: boolean;
+  isStable: boolean;
+  supportsFixedRate: boolean;
+  network: string;
+  tokenContract: string;
+  buy: boolean;
+  sell: boolean;
+  legacyTicker: string;
+}
+
+export interface ExchangeRateType {
+  fromCurrency: string;
+  toCurrency: string;
+  fromAmount: number;
+  toAmount: number;
+  rate: number;
+  fees: {
+    depositFee: number;
+    withdrawalFee: number;
+  };
+  minAmount: number;
+  maxAmount: number | null;
+  validUntil: number | null;
+}
+
+export interface TransactionType {
+  transactionId: string;
+  payinAddress: string;
+  expectedAmount: number;
+  status: string;
+  validUntil: number | null;
+}
+
+export interface OrderType {
+  id: string;
+  status: string;
+  fromCurrency: string;
+  toCurrency: string;
+  fromAmount: number;
+  toAmount: number | null;
+  payinAddress: string;
+  payinHash: string | null;
+  payoutHash: string | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
 }

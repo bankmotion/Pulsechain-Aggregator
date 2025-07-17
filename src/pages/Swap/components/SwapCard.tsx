@@ -1,14 +1,16 @@
 import { motion } from "framer-motion";
 import React from "react";
-import { TokenType } from "../../../types/Swap";
+import { TokenType, ExchangeRateType } from "../../../types/Swap";
 import AmountInput from "./AmountInput";
 import TokenSelector from "./TokenSelector";
 import TokenSwapButton from "./TokenSwapButton";
+import MinimumAmountWarning from "./MinimumAmountWarning";
+import { isBridgeOrPulse } from "../../../utils";
+import { SupportTypes } from "../../../const/swap";
 
 interface SwapCardProps {
   fromToken: TokenType | null;
   toToken: TokenType | null;
-  allChains: TokenType[];
   fromAmount: string;
   outputAmount: number;
   onFromTokenSelect: () => void;
@@ -19,12 +21,14 @@ interface SwapCardProps {
   fromTokenBalance: string;
   toTokenBalance: string;
   nativeBalance: string;
+  exchangeRate?: ExchangeRateType | null;
+  isNetworkSwitching?: boolean;
+  exchangeRateError?: string | null;
 }
 
 const SwapCard: React.FC<SwapCardProps> = ({
   fromToken,
   toToken,
-  allChains,
   fromAmount,
   outputAmount,
   onFromTokenSelect,
@@ -35,6 +39,9 @@ const SwapCard: React.FC<SwapCardProps> = ({
   fromTokenBalance,
   toTokenBalance,
   nativeBalance,
+  exchangeRate,
+  isNetworkSwitching = false,
+  exchangeRateError,
 }) => {
   const formatBalance = (balance: string) => {
     const num = parseFloat(balance);
@@ -45,16 +52,26 @@ const SwapCard: React.FC<SwapCardProps> = ({
 
   const getFromTokenBalance = () => {
     if (!fromToken) return "0";
-    return fromToken.address === "0x0000000000000000000000000000000000000000" 
+    return fromToken.address === "0x0000000000000000000000000000000000000000"
       ? formatBalance(nativeBalance)
       : formatBalance(fromTokenBalance);
   };
 
   const getToTokenBalance = () => {
     if (!toToken) return "0";
-    return toToken.address === "0x0000000000000000000000000000000000000000" 
+    return toToken.address === "0x0000000000000000000000000000000000000000"
       ? formatBalance(nativeBalance)
       : formatBalance(toTokenBalance);
+  };
+
+  // Calculate output amount based on whether it's a bridge exchange or regular swap
+  const getOutputAmount = () => {
+    if (exchangeRate) {
+      // For bridge exchanges, use the exchange rate data
+      return exchangeRate.toAmount || 0;
+    }
+    // For regular swaps, use the outputAmount prop
+    return outputAmount;
   };
 
   return (
@@ -64,14 +81,16 @@ const SwapCard: React.FC<SwapCardProps> = ({
         <div className="flex flex-col gap-2">
           <TokenSelector
             token={fromToken}
-            allChains={allChains}
             type="from"
             onSelect={onFromTokenSelect}
           />
-          {fromToken && (
+          {fromToken && !isNetworkSwitching && (
             <div className="text-xs text-gray-400 ml-2">
               Balance: {getFromTokenBalance()} {fromToken.symbol}
             </div>
+          )}
+          {fromToken && isNetworkSwitching && (
+            <div className="text-xs text-gray-400 ml-2">Loading balance...</div>
           )}
         </div>
         <AmountInput
@@ -82,30 +101,42 @@ const SwapCard: React.FC<SwapCardProps> = ({
         />
       </div>
 
+      {/* Minimum Amount Warning */}
+      <MinimumAmountWarning
+        error={exchangeRateError || null}
+        fromToken={fromToken}
+      />
+
       {/* Swap Button */}
       <TokenSwapButton onSwap={onTokenSwap} />
 
       {/* To Token Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div className="flex flex-col gap-2">
-          <TokenSelector
-            token={toToken}
-            allChains={allChains}
-            type="to"
-            onSelect={onToTokenSelect}
-          />
-          {toToken && (
-            <div className="text-xs text-gray-400 ml-2">
-              Balance: {getToTokenBalance()} {toToken.symbol}
-            </div>
-          )}
+          <TokenSelector token={toToken} type="to" onSelect={onToTokenSelect} />
+          {toToken &&
+            fromToken &&
+            isBridgeOrPulse(fromToken, toToken) !== SupportTypes.Bridge &&
+            !isNetworkSwitching && (
+              <div className="text-xs text-gray-400 ml-2">
+                Balance: {getToTokenBalance()} {toToken.symbol}
+              </div>
+            )}
+          {toToken &&
+            fromToken &&
+            isBridgeOrPulse(fromToken, toToken) !== SupportTypes.Bridge &&
+            isNetworkSwitching && (
+              <div className="text-xs text-gray-400 ml-2">
+                Loading balance...
+              </div>
+            )}
         </div>
         <AmountInput
           amount=""
           token={toToken}
           onAmountChange={() => {}}
           isOutput={true}
-          outputAmount={outputAmount}
+          outputAmount={getOutputAmount()}
           isLoading={isLoadingQuote}
         />
       </div>
@@ -113,4 +144,4 @@ const SwapCard: React.FC<SwapCardProps> = ({
   );
 };
 
-export default SwapCard; 
+export default SwapCard;

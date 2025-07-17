@@ -8,3 +8,14 @@ export const PulseChainConfig = {
   providerList: ["https://rpc.pulsechain.com"],
   explorerUrl: "https://scan.pulsechain.com",
 };
+
+export const EthereumConfig = {
+  chainId: 1,
+  chainSymbol: "ETH",
+  chainName: "Ethereum",
+  chainSymbolFull: "Ethereum",
+  chainIdHex: "0x1",
+  blockTime: 12000,
+  providerList: ["https://eth.llamarpc.com"],
+  explorerUrl: "https://etherscan.io",
+};

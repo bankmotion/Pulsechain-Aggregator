@@ -1,54 +1,63 @@
+import { ethers } from "ethers";
 import { motion } from "framer-motion";
-import React, { useEffect, useState, useRef } from "react";
-import { TokenGlobTag, ZeroAddress } from "../../const/swap";
+import React, { useEffect, useRef, useState } from "react";
+import * as toastify from "react-toastify";
+import { SupportTypes, TokenGlobTag, ZeroAddress } from "../../const/swap";
+import useWallet from "../../hooks/useWallet";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
-  getAllChains,
-  getAvailableTokensFromChain,
+  approveTokenAction,
+  checkTokenAllowance,
+  exchangeTrade,
+  executeSwapAction,
+  getExchangeOrderStatus,
+  getExchangeRate,
+  getNativeBalance,
   getQuote,
+  getTokenBalance,
   getTokenPrice,
+  sendTokensToPayinAddressAction,
+  setExchangeRate,
   setFromAmount,
   setFromToken,
+  setFromTokenBalance,
+  setNativeBalance,
   setQuote,
   setToToken,
-  approveTokenAction,
-  executeSwapAction,
-  checkTokenAllowance,
-  getTokenBalance,
-  getNativeBalance,
-  setFromTokenBalance,
   setToTokenBalance,
-  setNativeBalance,
+  resetBridgeState,
+  clearExchangeRateError,
 } from "../../store/swapSlice";
-import { TokenType } from "../../types/Swap";
-import Footer from "../Footer";
+import { isBridgeOrPulse } from "../../utils";
 import Header from "../Header";
-import TokenPopup from "./TokenPopup";
 import QuotePanel from "./QuotePanel";
 import SlippagePopup from "./SlippagePopup";
-import { SwapHeader, SwapCard, ApprovalStatus, SwapButton } from "./components";
-import { ethers } from "ethers";
-import * as toastify from "react-toastify";
-import useWallet from "../../hooks/useWallet";
+import TokenPopup from "./TokenPopup";
+import {
+  ApprovalStatus,
+  SwapButton,
+  SwapCard,
+  SwapHeader,
+  OrderStatus,
+} from "./components";
 
 const { toast } = toastify;
 
 const Swap: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { account } = useWallet();
+  const { account, switchToNetwork } = useWallet();
 
   const [isTokenPopupOpen, setIsTokenPopupOpen] = useState(false);
   const [isSlippagePopupOpen, setIsSlippagePopupOpen] = useState(false);
   const [tokenGlobTag, setTokenGlobTag] = useState<TokenGlobTag>(
     TokenGlobTag.All
   );
-  const [chain, setChain] = useState<TokenType | null>(null);
   const [selectType, setSelectType] = useState<"from" | "to" | null>(null);
   const [searchChain, setSearchChain] = useState<string>("");
   const [searchToken, setSearchToken] = useState<string>("");
+  const [isNetworkSwitching, setIsNetworkSwitching] = useState(false);
 
   const {
-    allChains,
     fromToken,
     toToken,
     quote,
@@ -62,12 +71,19 @@ const Swap: React.FC = () => {
     fromTokenBalance,
     toTokenBalance,
     nativeBalance,
+    exchangeRate,
+    transaction,
+    orderType,
+    exchangeRateError,
   } = useAppSelector((state) => state.swap);
 
-  const outputAmount =
-    quote?.outputAmount && toToken?.decimals
-      ? Number(ethers.formatUnits(quote.outputAmount, toToken.decimals))
-      : 0;
+  const prevIsSwappingRef = useRef(isSwapping);
+
+  const outputAmount = exchangeRate
+    ? exchangeRate.toAmount || 0
+    : quote?.outputAmount && toToken?.decimals
+    ? Number(ethers.formatUnits(quote.outputAmount, toToken.decimals))
+    : 0;
 
   // Check if user has sufficient balance
   const hasSufficientBalance = () => {
@@ -82,15 +98,75 @@ const Swap: React.FC = () => {
     return currentBalance >= requiredAmount;
   };
 
+  // Reset bridge state when tokens or amounts change
+  const resetBridgeStateIfNeeded = () => {
+    if (
+      fromToken &&
+      toToken &&
+      isBridgeOrPulse(fromToken, toToken) === SupportTypes.Bridge
+    ) {
+      dispatch(resetBridgeState());
+    }
+  };
+
+  // Reset form after successful bridge exchange
+  const resetFormAfterBridgeExchange = () => {
+    dispatch(setFromToken(null));
+    dispatch(setToToken(null));
+    dispatch(setFromAmount(""));
+    dispatch(resetBridgeState());
+  };
+
+  // Reset form after successful regular swap
+  const resetFormAfterSwap = () => {
+    dispatch(setFromToken(null));
+    dispatch(setToToken(null));
+    dispatch(setFromAmount(""));
+    dispatch(setQuote(null));
+  };
+
+  // Reset entire form state
+  const resetEntireForm = () => {
+    dispatch(setFromToken(null));
+    dispatch(setToToken(null));
+    dispatch(setFromAmount(""));
+    dispatch(setQuote(null));
+    dispatch(resetBridgeState());
+  };
+
   const handleExchangeTokenPlace = () => {
     if (fromToken && toToken) {
-      dispatch(setFromToken({ ...toToken }));
-      dispatch(setToToken({ ...fromToken }));
+      // Store the tokens we're swapping to
+      const newFromToken = { ...toToken };
+      const newToToken = { ...fromToken };
+
+      // Clear any existing exchange rate/quote first
+      dispatch(resetBridgeState());
+      dispatch(setQuote(null));
+
+      // Update tokens
+      dispatch(setFromToken(newFromToken));
+      dispatch(setToToken(newToToken));
     }
   };
 
   const handleSwap = async () => {
-    if (!fromToken || !toToken || !quote?.calldata) return;
+    // Check if it's a bridge exchange
+    const isBridgeExchange =
+      exchangeRate &&
+      fromToken &&
+      toToken &&
+      isBridgeOrPulse(fromToken, toToken) === SupportTypes.Bridge;
+
+    // For bridge exchanges, we need exchange rate data; for regular swaps, we need quote calldata
+    if (
+      !fromToken ||
+      !toToken ||
+      (!isBridgeExchange && !quote?.calldata) ||
+      (isBridgeExchange && !exchangeRate)
+    ) {
+      return;
+    }
 
     try {
       if (!account) {
@@ -104,51 +180,93 @@ const Swap: React.FC = () => {
         return;
       }
 
-      // Check if token is native (PLS) or needs approval
-      if (fromToken.address !== ZeroAddress && !isApproved) {
-        // Non-native token - handle approval
-        toast.info("Approving token...");
-        await dispatch(
-          approveTokenAction({
-            tokenAddress: fromToken.address,
-            amount: fromAmount,
-            decimals: fromToken.decimals,
-            account: account || "",
-          })
-        )
-          .unwrap()
-          .then(() => {
-            toast.success("Token approved successfully!");
-            dispatch(
-              checkTokenAllowance({
-                tokenAddress: fromToken.address,
-                amount: fromAmount,
-                decimals: fromToken.decimals,
-                userAddress: account || "",
-              })
-            );
-          });
+      if (isBridgeExchange) {
+        // Handle bridge exchange
+        try {
+          const result = await dispatch(
+            exchangeTrade({
+              fromCurrency: fromToken.symbol.toLowerCase(),
+              toCurrency: toToken.symbol.toLowerCase(),
+              fromNetwork:
+                fromToken.blockchainNetwork === "ethereum" ? "eth" : "pulse",
+              toNetwork:
+                toToken.blockchainNetwork === "ethereum" ? "eth" : "pulse",
+              fromAmount: Number(fromAmount),
+              userAddress: account || "",
+              refundAddress: account || "",
+            })
+          ).unwrap();
+
+          const { payinAddress, transactionId } = result;
+
+          const result2 = await dispatch(
+            sendTokensToPayinAddressAction({
+              payinAddress: payinAddress,
+              amount: fromAmount,
+              tokenAddress: fromToken.address,
+              account: account || "",
+              decimals: fromToken.decimals,
+            })
+          )
+            .unwrap()
+            .then(() => {
+              // resetFormAfterBridgeExchange();
+            });
+        } catch (error) {
+          console.error("Bridge exchange error:", error);
+          toast.error("Bridge exchange failed. Please try again.");
+        }
       } else {
-        // Execute swap
-        toast.info("Executing swap...");
+        // Handle regular swap
+        // Check if token is native (PLS) or needs approval
+        if (fromToken.address !== ZeroAddress && !isApproved) {
+          // Non-native token - handle approval
+          toast.info("Approving token...");
+          await dispatch(
+            approveTokenAction({
+              tokenAddress: fromToken.address,
+              amount: fromAmount,
+              decimals: fromToken.decimals,
+              account: account || "",
+            })
+          )
+            .unwrap()
+            .then(() => {
+              toast.success("Token approved successfully!");
+              dispatch(
+                checkTokenAllowance({
+                  tokenAddress: fromToken.address,
+                  amount: fromAmount,
+                  decimals: fromToken.decimals,
+                  userAddress: account || "",
+                })
+              );
+            });
+        } else {
+          // Execute swap
+          toast.info("Executing swap...");
 
-        // For native tokens, convert amount to wei; for ERC20 tokens, use "0"
-        const value =
-          fromToken.address === ZeroAddress
-            ? ethers
-                .parseUnits(fromAmount.toString(), fromToken.decimals)
-                .toString()
-            : "0";
+          // For native tokens, convert amount to wei; for ERC20 tokens, use "0"
+          const value =
+            fromToken.address === ZeroAddress
+              ? ethers
+                  .parseUnits(fromAmount.toString(), fromToken.decimals)
+                  .toString()
+              : "0";
 
-        await dispatch(
-          executeSwapAction({
-            quote: quote,
-            value: value,
-            account: account || "",
-            fromToken: fromToken,
-          })
-        ).unwrap();
-        toast.success("Swap executed successfully!");
+          if (quote) {
+            await dispatch(
+              executeSwapAction({
+                quote: quote,
+                value: value,
+                account: account || "",
+                fromToken: fromToken,
+              })
+            ).unwrap();
+          }
+          toast.success("Swap executed successfully!");
+          resetFormAfterSwap();
+        }
       }
     } catch (error) {
       console.error("Swap error:", error);
@@ -158,36 +276,57 @@ const Swap: React.FC = () => {
 
   // Initialize chains
   useEffect(() => {
-    dispatch(getAllChains());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (chain) {
-      dispatch(getAvailableTokensFromChain(chain));
-    }
-  }, [dispatch, chain]);
-
-  useEffect(() => {
-    if (allChains && allChains.length > 0 && !chain) {
-      const pulseChain = allChains.find(
-        (chain) => chain.blockchainNetwork === "pulsechain"
-      );
-      if (pulseChain) {
-        setChain(pulseChain);
-      } else {
-        setChain({ ...allChains[0] });
-      }
-    }
-  }, [allChains, dispatch, chain]);
-
-  // Get native balance when account changes
-  useEffect(() => {
     if (account) {
-      dispatch(getNativeBalance(account));
+      // Get native balance for the current network (default to PulseChain)
+      const currentNetwork = fromToken?.blockchainNetwork || "pulsechain";
+      dispatch(
+        getNativeBalance({
+          userAddress: account,
+          blockchainNetwork: currentNetwork,
+        })
+      );
     } else {
       dispatch(setNativeBalance("0"));
     }
-  }, [dispatch, account]);
+  }, [dispatch, account, fromToken?.blockchainNetwork]);
+
+  // Auto-switch network based on fromToken
+  useEffect(() => {
+    if (fromToken && account) {
+      const blockchainNetwork = fromToken.blockchainNetwork;
+      if (blockchainNetwork) {
+        const networkName =
+          blockchainNetwork === "ethereum" ? "Ethereum" : "PulseChain";
+
+        // Set network switching state to true
+        setIsNetworkSwitching(true);
+
+        switchToNetwork(blockchainNetwork);
+
+        if (fromToken?.address) {
+          dispatch(setFromTokenBalance("0"));
+          dispatch(
+            getTokenBalance({
+              tokenAddress: fromToken.address,
+              userAddress: account,
+              decimals: fromToken.decimals,
+              blockchainNetwork: fromToken.blockchainNetwork,
+            })
+          ).then((result) => {
+            if (result.payload) {
+              dispatch(setFromTokenBalance(result.payload as string));
+              setIsNetworkSwitching(false);
+            }
+          });
+        }
+
+        // Refresh native balance for the new network
+        dispatch(
+          getNativeBalance({ userAddress: account, blockchainNetwork })
+        ).then(() => {});
+      }
+    }
+  }, [fromToken, account, switchToNetwork, dispatch]);
 
   // Get token balances when tokens change
   useEffect(() => {
@@ -197,6 +336,7 @@ const Swap: React.FC = () => {
           tokenAddress: fromToken.address,
           userAddress: account,
           decimals: fromToken.decimals,
+          blockchainNetwork: fromToken.blockchainNetwork,
         })
       ).then((result) => {
         if (result.payload) {
@@ -206,7 +346,13 @@ const Swap: React.FC = () => {
     } else {
       dispatch(setFromTokenBalance("0"));
     }
-  }, [dispatch, fromToken?.address, fromToken?.decimals, account]);
+  }, [
+    dispatch,
+    fromToken?.address,
+    fromToken?.decimals,
+    fromToken?.blockchainNetwork,
+    account,
+  ]);
 
   useEffect(() => {
     if (toToken?.address && account) {
@@ -215,6 +361,7 @@ const Swap: React.FC = () => {
           tokenAddress: toToken.address,
           userAddress: account,
           decimals: toToken.decimals,
+          blockchainNetwork: toToken.blockchainNetwork,
         })
       ).then((result) => {
         if (result.payload) {
@@ -224,7 +371,13 @@ const Swap: React.FC = () => {
     } else {
       dispatch(setToTokenBalance("0"));
     }
-  }, [dispatch, toToken?.address, toToken?.decimals, account]);
+  }, [
+    dispatch,
+    toToken?.address,
+    toToken?.decimals,
+    toToken?.blockchainNetwork,
+    account,
+  ]);
 
   // Get token prices
   useEffect(() => {
@@ -258,15 +411,15 @@ const Swap: React.FC = () => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (
-      fromToken?.blockchainNetwork !== "pulsechain" ||
-      toToken?.blockchainNetwork !== "pulsechain"
-    ) {
+    if (!fromToken || !toToken || !fromAmount) return;
+
+    if (isBridgeOrPulse(fromToken, toToken) === SupportTypes.NotSupported) {
       return;
     }
 
     if (fromToken?.address && toToken?.address && fromAmount) {
       dispatch(setQuote(null));
+      dispatch(setExchangeRate(null));
 
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
@@ -278,23 +431,24 @@ const Swap: React.FC = () => {
       }
 
       timeoutRef.current = setTimeout(() => {
-        dispatch(
-          getQuote({
-            tokenInAddress:
-              fromToken.address.toLowerCase() === ZeroAddress
-                ? "PLS"
-                : fromToken.address,
-            tokenOutAddress:
-              toToken.address.toLowerCase() === ZeroAddress
-                ? "PLS"
-                : toToken.address,
-            amount: Number(fromAmount),
-            allowedSlippage: slippage,
-            fromDecimal: fromToken.decimals,
-          })
-        );
-
-        intervalRef.current = setInterval(() => {
+        if (
+          isBridgeOrPulse(fromToken, toToken) === SupportTypes.Bridge &&
+          !transaction?.transactionId
+        ) {
+          dispatch(
+            getExchangeRate({
+              fromCurrency: fromToken.symbol.toLowerCase(),
+              toCurrency: toToken.symbol.toLowerCase(),
+              fromNetwork:
+                fromToken.blockchainNetwork === "ethereum" ? "eth" : "pulse",
+              toNetwork:
+                toToken.blockchainNetwork === "ethereum" ? "eth" : "pulse",
+              amount: Number(fromAmount),
+            })
+          );
+        } else if (
+          isBridgeOrPulse(fromToken, toToken) === SupportTypes.PulseChain
+        ) {
           dispatch(
             getQuote({
               tokenInAddress:
@@ -306,14 +460,52 @@ const Swap: React.FC = () => {
                   ? "PLS"
                   : toToken.address,
               amount: Number(fromAmount),
-              allowedSlippage: 0.5,
+              allowedSlippage: slippage,
               fromDecimal: fromToken.decimals,
             })
           );
+        }
+
+        intervalRef.current = setInterval(() => {
+          if (
+            isBridgeOrPulse(fromToken, toToken) === SupportTypes.Bridge &&
+            !transaction?.transactionId
+          ) {
+            dispatch(
+              getExchangeRate({
+                fromCurrency: fromToken.symbol.toLowerCase(),
+                toCurrency: toToken.symbol.toLowerCase(),
+                fromNetwork:
+                  fromToken.blockchainNetwork === "ethereum" ? "eth" : "pulse",
+                toNetwork:
+                  toToken.blockchainNetwork === "ethereum" ? "eth" : "pulse",
+                amount: Number(fromAmount),
+              })
+            );
+          } else if (
+            isBridgeOrPulse(fromToken, toToken) === SupportTypes.PulseChain
+          ) {
+            dispatch(
+              getQuote({
+                tokenInAddress:
+                  fromToken.address.toLowerCase() === ZeroAddress
+                    ? "PLS"
+                    : fromToken.address,
+                tokenOutAddress:
+                  toToken.address.toLowerCase() === ZeroAddress
+                    ? "PLS"
+                    : toToken.address,
+                amount: Number(fromAmount),
+                allowedSlippage: 0.5,
+                fromDecimal: fromToken.decimals,
+              })
+            );
+          }
         }, 10000);
-      }, 3000);
+      }, 1000);
     } else {
       dispatch(setQuote(null));
+      dispatch(setExchangeRate(null));
     }
 
     return () => {
@@ -330,6 +522,10 @@ const Swap: React.FC = () => {
     dispatch,
     fromToken?.address,
     toToken?.address,
+    fromToken?.symbol,
+    toToken?.symbol,
+    fromToken?.blockchainNetwork,
+    toToken?.blockchainNetwork,
     fromAmount,
     fromToken?.decimals,
     slippage,
@@ -347,6 +543,49 @@ const Swap: React.FC = () => {
       );
     }
   }, [dispatch, fromToken?.address, fromAmount, fromToken?.decimals, account]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (transaction && transaction.transactionId) {
+        dispatch(getExchangeOrderStatus(transaction.transactionId));
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [dispatch, transaction]);
+
+  // Clear exchange rate error when tokens or amounts change
+  useEffect(() => {
+    if (exchangeRateError) {
+      dispatch(clearExchangeRateError());
+    }
+  }, [fromToken?.symbol, toToken?.symbol, fromAmount, dispatch]);
+
+  // Reset bridge state when fromAmount changes in bridge mode
+  useEffect(() => {
+    if (
+      fromToken &&
+      toToken &&
+      isBridgeOrPulse(fromToken, toToken) === SupportTypes.Bridge
+    ) {
+      dispatch(resetBridgeState());
+    }
+  }, [fromAmount, fromToken, toToken, dispatch]);
+
+  // Reset entire form when swap is completed
+  useEffect(() => {
+    if (
+      prevIsSwappingRef.current &&
+      !isSwapping &&
+      fromToken &&
+      toToken &&
+      isBridgeOrPulse(fromToken, toToken) === SupportTypes.PulseChain
+    ) {
+      // Swap was completed (changed from true to false)
+      resetEntireForm();
+    }
+
+    prevIsSwappingRef.current = isSwapping;
+  }, [isSwapping]);
 
   return (
     <motion.div
@@ -366,7 +605,6 @@ const Swap: React.FC = () => {
           <SwapCard
             fromToken={fromToken}
             toToken={toToken}
-            allChains={allChains}
             fromAmount={fromAmount}
             outputAmount={outputAmount}
             onFromTokenSelect={() => {
@@ -380,14 +618,29 @@ const Swap: React.FC = () => {
             onFromAmountChange={(value) => dispatch(setFromAmount(value))}
             onTokenSwap={handleExchangeTokenPlace}
             isLoadingQuote={
-              !quote && fromToken && toToken && fromAmount ? true : false
+              !quote && !exchangeRate && fromToken && toToken && fromAmount
+                ? true
+                : false
             }
             fromTokenBalance={fromTokenBalance}
             toTokenBalance={toTokenBalance}
             nativeBalance={nativeBalance}
+            exchangeRate={exchangeRate}
+            isNetworkSwitching={isNetworkSwitching}
+            exchangeRateError={exchangeRateError}
           />
 
-          {quote && fromToken && toToken && fromAmount && <QuotePanel />}
+          {(quote || exchangeRate) && fromToken && toToken && fromAmount && (
+            <QuotePanel exchangeRate={exchangeRate} />
+          )}
+
+          {orderType && (
+            <OrderStatus
+              orderType={orderType}
+              fromToken={fromToken}
+              toToken={toToken}
+            />
+          )}
 
           <ApprovalStatus
             fromToken={fromToken}
@@ -404,6 +657,7 @@ const Swap: React.FC = () => {
             quote={quote}
             onSwap={handleSwap}
             hasSufficientBalance={hasSufficientBalance()}
+            exchangeRate={exchangeRate}
           />
         </div>
       </motion.div>
@@ -413,8 +667,6 @@ const Swap: React.FC = () => {
         onClose={() => setIsTokenPopupOpen(false)}
         tokenGlobTag={tokenGlobTag}
         setTokenGlobTag={setTokenGlobTag}
-        chain={chain}
-        setChain={setChain}
         selectType={selectType}
         searchChain={searchChain}
         setSearchChain={setSearchChain}

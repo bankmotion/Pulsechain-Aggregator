@@ -2,20 +2,20 @@ import { ChevronDownIcon } from "@heroicons/react/24/solid";
 import { motion } from "framer-motion";
 import React from "react";
 import { TokenType } from "../../../types/Swap";
+import { Chains } from "../../../const/swap";
 
 interface TokenSelectorProps {
   token: TokenType | null;
-  allChains: TokenType[];
   type: "from" | "to";
   onSelect: () => void;
 }
 
 const TokenSelector: React.FC<TokenSelectorProps> = ({
   token,
-  allChains,
   type,
   onSelect,
 }) => {
+    
   return (
     <motion.button
       whileHover={{ scale: 1.05, backgroundColor: "#3a3f5a" }}
@@ -30,10 +30,10 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
               <div className="w-[48px] sm:w-[64px] h-[32px] sm:h-[42px] rounded-xl absolute left-0 top-0 translate-y-[-50%] flex justify-start pl-1 sm:pl-2 items-center bg-[#627eea]">
                 <img
                   src={
-                    allChains.find(
+                    Chains.find(
                       (tempChain) =>
-                        tempChain.blockchainNetwork === token?.blockchainNetwork
-                    )?.image
+                        tempChain.network === token?.blockchainNetwork
+                    )?.img
                   }
                   alt={`${token?.network}`}
                   className="w-5 h-5 sm:w-6 sm:h-6 object-cover rounded-full"
@@ -67,4 +67,4 @@ const TokenSelector: React.FC<TokenSelectorProps> = ({
   );
 };
 
-export default TokenSelector; 
+export default TokenSelector;

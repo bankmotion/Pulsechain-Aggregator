@@ -1,31 +1,33 @@
 import { useConnectWallet } from "@web3-onboard/react";
 import { useCallback, useEffect } from "react";
-import { PulseChainConfig } from "../config/chainConfig";
+import { PulseChainConfig, EthereumConfig } from "../config/chainConfig";
 
 const useWallet = () => {
   const [{ wallet }, connect, disconnect] = useConnectWallet();
   const account = wallet ? wallet.accounts[0].address : "";
 
-  // Function to switch to Pulsechain
-  const switchToPulsechain = useCallback(async () => {
+  // Function to switch to a specific network
+  const switchToNetwork = useCallback(async (blockchainNetwork: string) => {
     if (!wallet?.provider) return;
+    
+    const config = blockchainNetwork === "ethereum" ? EthereumConfig : PulseChainConfig;
     
     try {
       const provider = wallet.provider;
       if (provider && provider.request) {
-        // Check if we're already on Pulsechain
+        // Check if we're already on the target network
         const chainId = await provider.request({ method: 'eth_chainId' });
         
-        if (chainId !== PulseChainConfig.chainIdHex) {
-          // Switch to Pulsechain
+        if (chainId !== config.chainIdHex) {
+          // Switch to the target network
           await provider.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: PulseChainConfig.chainIdHex }],
+            params: [{ chainId: config.chainIdHex }],
           });
         }
       }
     } catch (error) {
-      console.error('Failed to switch to Pulsechain:', error);
+      console.error(`Failed to switch to ${config.chainName}:`, error);
       // If the chain is not added, try to add it
       try {
         const provider = wallet.provider;
@@ -33,23 +35,28 @@ const useWallet = () => {
           await provider.request({
             method: 'wallet_addEthereumChain',
             params: [{
-              chainId: PulseChainConfig.chainIdHex,
-              chainName: PulseChainConfig.chainName,
+              chainId: config.chainIdHex,
+              chainName: config.chainName,
               nativeCurrency: {
-                name: PulseChainConfig.chainSymbol,
-                symbol: PulseChainConfig.chainSymbol,
+                name: config.chainSymbol,
+                symbol: config.chainSymbol,
                 decimals: 18,
               },
-              rpcUrls: PulseChainConfig.providerList,
-              blockExplorerUrls: [PulseChainConfig.explorerUrl],
+              rpcUrls: config.providerList,
+              blockExplorerUrls: [config.explorerUrl],
             }],
           });
         }
       } catch (addError) {
-        console.error('Failed to add Pulsechain:', addError);
+        console.error(`Failed to add ${config.chainName}:`, addError);
       }
     }
   }, [wallet]);
+
+  // Function to switch to Pulsechain (for backward compatibility)
+  const switchToPulsechain = useCallback(async () => {
+    await switchToNetwork("pulsechain");
+  }, [switchToNetwork]);
 
   // Set provider whenever wallet changes
   useEffect(() => {
@@ -60,58 +67,13 @@ const useWallet = () => {
     }
   }, [wallet]);
 
-  // Auto-switch to Pulsechain when wallet is connected
-  useEffect(() => {
-    if (wallet?.provider) {
-      switchToPulsechain();
-    }
-  }, [wallet, switchToPulsechain]);
+  // Network switching is now handled in the Swap component based on selected tokens
 
   const connectWallet = useCallback(async () => {
     const wallets = await connect();
     if (wallets[0] != null) {
       (window as any).provider = wallets[0].provider as any;
-      
-      // Automatically switch to Pulsechain after connection
-      try {
-        const provider = wallets[0].provider;
-        if (provider && provider.request) {
-          // Check if we're already on Pulsechain
-          const chainId = await provider.request({ method: 'eth_chainId' });
-          
-          if (chainId !== PulseChainConfig.chainIdHex) {
-            // Switch to Pulsechain
-            await provider.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: PulseChainConfig.chainIdHex }],
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Failed to switch to Pulsechain:', error);
-        // If the chain is not added, try to add it
-        try {
-          const provider = wallets[0].provider;
-          if (provider && provider.request) {
-            await provider.request({
-              method: 'wallet_addEthereumChain',
-              params: [{
-                chainId: PulseChainConfig.chainIdHex,
-                chainName: PulseChainConfig.chainName,
-                nativeCurrency: {
-                  name: PulseChainConfig.chainSymbol,
-                  symbol: PulseChainConfig.chainSymbol,
-                  decimals: 18,
-                },
-                rpcUrls: PulseChainConfig.providerList,
-                blockExplorerUrls: [PulseChainConfig.explorerUrl],
-              }],
-            });
-          }
-        } catch (addError) {
-          console.error('Failed to add Pulsechain:', addError);
-        }
-      }
+      // Network switching will be handled automatically when tokens are selected
     }
   }, [connect]);
 
@@ -121,7 +83,7 @@ const useWallet = () => {
     }
   }, [disconnect, wallet]);
 
-  return { account, connectWallet, disconnectWallet, switchToPulsechain };
+  return { account, connectWallet, disconnectWallet, switchToPulsechain, switchToNetwork };
 };
 
 export default useWallet;

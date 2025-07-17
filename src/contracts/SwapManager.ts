@@ -5,7 +5,7 @@ import ERC20ABI from "../abis/ERC20.json";
 import { QuoteType, TokenType } from "../types/Swap";
 import { PulseChainConfig } from "../config/chainConfig";
 import { SwapManagerAddress } from "../const/swap";
-import { BigNumberish, ethers, ZeroAddress } from "ethers";
+import { BigNumberish, ZeroAddress } from "ethers";
 
 export interface ApprovalParams {
   tokenAddress: string;
@@ -166,7 +166,7 @@ export const needsApproval = async (
     );
 
     // Convert amount to wei for comparison
-    const amountInWei = ethers.parseUnits(amount, decimals).toString();
+    const amountInWei = toWeiString(amount, decimals);
 
     return BigInt(allowance) >= BigInt(amountInWei);
   } catch (error) {
@@ -191,11 +191,11 @@ export const approveToken = async (params: ApprovalParams): Promise<any> => {
       params.tokenAddress
     );
 
-    const amountInWei = ethers.parseUnits(params.amount, params.decimals);
+    const amountInWei = toWeiString(params.amount, params.decimals);
 
     // Execute approval transaction
     const transaction = await tokenContract.methods
-      .approve(params.spenderAddress, amountInWei)
+      .approve(params.spenderAddress, amountInWei.toString())
       .send({
         from: params.account,
       });
@@ -287,6 +287,64 @@ export const waitForTransaction = async (
   } catch (error) {
     console.error("Failed to wait for transaction:", error);
     throw new Error("Transaction confirmation failed");
+  }
+};
+
+/**
+ * Convert a decimal string amount to a stringified integer with the correct number of decimals
+ */
+function toWeiString(amount: string, decimals: number): string {
+  const [whole, fraction = ""] = amount.split(".");
+  const fractionPadded = (fraction + "0".repeat(decimals)).slice(0, decimals);
+  return BigInt(whole + fractionPadded).toString();
+}
+
+/**
+ * Send tokens (native or ERC20) to a specified address using the connected wallet
+ * @param tokenAddress - Address of the token (use ZeroAddress for native)
+ * @param toAddress - Recipient address (payinAddress)
+ * @param amount - Amount to send (as string, in human units)
+ * @param decimals - Token decimals
+ * @param account - Sender's address
+ * @returns Transaction receipt
+ *
+ * Usage example:
+ *   await sendToken(tokenAddress, payinAddress, amount, decimals, account);
+ */
+export const sendToken = async (
+  tokenAddress: string,
+  toAddress: string,
+  amount: string,
+  decimals: number,
+  account: string
+): Promise<any> => {
+  try {
+    const web3 = getProvider();
+    // Native token transfer
+    if (isNativeToken(tokenAddress)) {
+      const value = toWeiString(amount, decimals);
+      const tx = await web3.eth.sendTransaction({
+        from: account,
+        to: toAddress,
+        value: value, // ensure value is a string
+      });
+      await waitForTransaction(tx.transactionHash.toString(), 1);
+      return tx;
+    }
+    // ERC20 transfer
+    const tokenContract = new web3.eth.Contract(
+      ERC20ABI as unknown as AbiItem[],
+      tokenAddress
+    );
+    const value = toWeiString(amount, decimals);
+    const tx = await tokenContract.methods.transfer(toAddress, String(value)).send({
+      from: account,
+    });
+    await waitForTransaction(tx.transactionHash, 1);
+    return tx;
+  } catch (error) {
+    console.error("Token send failed:", error);
+    throw new Error("Token send failed");
   }
 };
 

@@ -1,16 +1,20 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { TokenGlobTag } from "../../const/swap";
+import { Chains, ChainSymbol, TokenGlobTag } from "../../const/swap";
 import { TokenType } from "../../types/Swap";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { setFromToken, setToToken } from "../../store/swapSlice";
+import {
+  getAvailableTokensFromChain,
+  getCurrencies,
+  setFromToken,
+  setToToken,
+} from "../../store/swapSlice";
+import { useEffect, useState } from "react";
 
 interface TokenPopupProps {
   isOpen: boolean;
   onClose: () => void;
   tokenGlobTag: TokenGlobTag;
   setTokenGlobTag: (tag: TokenGlobTag) => void;
-  chain: TokenType | null;
-  setChain: (chain: TokenType) => void;
   selectType: "from" | "to" | null;
   searchChain: string;
   setSearchChain: (searchChain: string) => void;
@@ -24,8 +28,6 @@ const TokenPopup = ({
   onClose,
   tokenGlobTag,
   setTokenGlobTag,
-  chain,
-  setChain,
   selectType,
   searchChain,
   setSearchChain,
@@ -33,18 +35,62 @@ const TokenPopup = ({
   setSearchToken,
   availableTokens,
 }: TokenPopupProps) => {
-  const { allChains } = useAppSelector((state) => state.swap);
+  const [chain, setChain] = useState<ChainSymbol | null>(null);
+  const [isChainLoading, setIsChainLoading] = useState(false);
 
   const dispatch = useAppDispatch();
+  const { fromToken, toToken } = useAppSelector((state) => state.swap);
 
   const handleSetToken = (token: TokenType) => {
-    console.log(token);
     if (selectType === "from") {
       dispatch(setFromToken(token));
     } else {
       dispatch(setToToken(token));
     }
   };
+
+  // Set initial chain based on current token when popup opens
+  useEffect(() => {
+    if (isOpen && selectType) {
+      const currentToken = selectType === "from" ? fromToken : toToken;
+      
+      if (currentToken) {
+        const blockchainNetwork = currentToken.blockchainNetwork;
+        if (blockchainNetwork === "ethereum") {
+          setChain(ChainSymbol.ETH);
+        } else if (blockchainNetwork === "pulsechain") {
+          setChain(ChainSymbol.PLS);
+        }
+      }
+    }
+  }, [isOpen, selectType, fromToken, toToken]);
+
+  const handleChainChange = async (newChain: ChainSymbol) => {
+    if (chain === newChain) return;
+    
+    setIsChainLoading(true);
+    setChain(newChain);
+    
+    try {
+      if (newChain === ChainSymbol.ETH) {
+        await dispatch(getCurrencies());
+      } else if (newChain === ChainSymbol.PLS) {
+        await dispatch(getAvailableTokensFromChain("pulsechain"));
+      }
+    } catch (error) {
+      console.error("Error loading tokens for chain:", error);
+    } finally {
+      setIsChainLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (chain === ChainSymbol.ETH) {
+      dispatch(getCurrencies());
+    } else if (chain === ChainSymbol.PLS) {
+      dispatch(getAvailableTokensFromChain("pulsechain"));
+    }
+  }, [chain, dispatch]);
 
   return (
     <AnimatePresence>
@@ -65,7 +111,7 @@ const TokenPopup = ({
           >
             <div className="flex justify-between items-center p-3 sm:p-4 border-b border-gray-800">
               <h2 className="text-base sm:text-lg font-semibold text-white">
-                Select Token
+                Select Token {selectType && `(${selectType})`}
               </h2>
               <button
                 onClick={onClose}
@@ -134,36 +180,34 @@ const TokenPopup = ({
                       All Chains
                     </div>
                     <hr className="border-gray-800" />
-                    {allChains
-                      .filter(
-                        (tempChain) =>
-                          (tempChain.type === "NATIVE_ETH" ||
-                            tempChain.type === "NATIVE") &&
-                          tempChain.network
-                            .toLowerCase()
-                            .includes(searchChain.toLowerCase()) &&
-                          (tempChain.network === "ETH" ||
-                            tempChain.network === "PULSECHAIN")
-                      )
-                      .map((tempChain, index) => (
-                        <button
-                          key={index}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm transition-all duration-200 flex items-center ${
-                            chain?.blockchainNetwork ===
-                            tempChain.blockchainNetwork
-                              ? "bg-[#3a3f5a] text-white font-medium"
-                              : "text-gray-300 hover:bg-[#2b2e4a] hover:text-white"
-                          }`}
-                          onClick={() => setChain(tempChain)}
-                        >
-                          <img
-                            src={tempChain.image}
-                            alt={tempChain.symbol}
-                            className="w-5 h-5 sm:w-6 sm:h-6 rounded-full mr-2"
-                          />
-                          <span className="truncate">{tempChain.network}</span>
-                        </button>
-                      ))}
+                    {Chains.map((tempChain, index) => (
+                      <button
+                        key={index}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm transition-all duration-200 flex items-center ${
+                          chain === tempChain.symbol
+                            ? "bg-[#3a3f5a] text-white font-medium"
+                            : "text-gray-300 hover:bg-[#2b2e4a] hover:text-white"
+                        }`}
+                        onClick={() => handleChainChange(tempChain.symbol)}
+                        disabled={isChainLoading}
+                      >
+                        <img
+                          src={tempChain.img}
+                          alt={tempChain.symbol}
+                          className="w-5 h-5 sm:w-6 sm:h-6 rounded-full mr-2"
+                        />
+                        <span className="truncate">{tempChain.name}</span>
+                        {isChainLoading && chain === tempChain.symbol && (
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="ml-auto"
+                          >
+                            ⏳
+                          </motion.div>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -192,39 +236,55 @@ const TokenPopup = ({
                     </svg>
                   </div>
                   <div className="space-y-1.5 max-h-[200px] sm:max-h-[320px] overflow-y-auto custom-scrollbar">
-                    {availableTokens.length > 0
-                      ? availableTokens.map((token, index) => (
-                          <motion.button
-                            key={index}
-                            className="w-full flex items-center space-x-3 py-2 px-3 sm:px-4 rounded-lg bg-[#2b2e4a] hover:bg-[#3a3f5a] transition-all duration-200"
-                            onClick={() => {
-                              handleSetToken(token);
-                              onClose();
-                            }}
-                          >
-                            <div className="text-xl rounded-full flex-shrink-0">
-                              <img
-                                src={token.image}
-                                alt={token.symbol}
-                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
-                              />
+                    {isChainLoading ? (
+                      // Loading skeleton
+                      Array.from({ length: 8 }).map((_, index) => (
+                        <motion.div
+                          key={index}
+                          className="w-full h-12 bg-[#2b2e4a] rounded-lg animate-pulse"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: index * 0.1 }}
+                        />
+                      ))
+                    ) : availableTokens.length > 0 ? (
+                      availableTokens.map((token: TokenType, index: number) => (
+                        <motion.button
+                          key={index}
+                          className="w-full flex items-center space-x-3 py-2 px-3 sm:px-4 rounded-lg bg-[#2b2e4a] hover:bg-[#3a3f5a] transition-all duration-200"
+                          onClick={() => {
+                            handleSetToken(token);
+                            onClose();
+                          }}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                          <div className="text-xl rounded-full flex-shrink-0">
+                            <img
+                              src={token.image}
+                              alt={token.symbol}
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full"
+                            />
+                          </div>
+                          <div className="text-left min-w-0 flex-1">
+                            <div className="font-medium text-white text-xs sm:text-sm truncate">
+                              {token.symbol}
                             </div>
-                            <div className="text-left min-w-0 flex-1">
-                              <div className="font-medium text-white text-xs sm:text-sm truncate">
-                                {token.symbol}
-                              </div>
-                              <div className="text-xs text-gray-400 truncate">
-                                {token.name}
-                              </div>
+                            <div className="text-xs text-gray-400 truncate">
+                              {token.name}
                             </div>
-                          </motion.button>
-                        ))
-                      : Array.from({ length: 10 }).map((_, index) => (
-                          <div
-                            key={index}
-                            className="w-full h-8 sm:h-10 bg-[#2b2e4a] rounded-lg"
-                          ></div>
-                        ))}
+                          </div>
+                        </motion.button>
+                      ))
+                    ) : (
+                      Array.from({ length: 10 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="w-full h-8 sm:h-10 bg-[#2b2e4a] rounded-lg"
+                        ></div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
