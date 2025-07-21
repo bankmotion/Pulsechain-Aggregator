@@ -45,7 +45,7 @@ const { toast } = toastify;
 
 const Swap: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { account, switchToNetwork } = useWallet();
+  const { account, switchToNetwork, connectWallet } = useWallet();
 
   const [isTokenPopupOpen, setIsTokenPopupOpen] = useState(false);
   const [isSlippagePopupOpen, setIsSlippagePopupOpen] = useState(false);
@@ -151,6 +151,10 @@ const Swap: React.FC = () => {
   };
 
   const handleSwap = async () => {
+    if (!account) {
+      connectWallet();
+      return;
+    }
     // Check if it's a bridge exchange
     const isBridgeExchange =
       exchangeRate &&
@@ -169,11 +173,6 @@ const Swap: React.FC = () => {
     }
 
     try {
-      if (!account) {
-        toast.error("No account found");
-        return;
-      }
-
       // Check balance before proceeding
       if (!hasSufficientBalance()) {
         toast.error("Insufficient balance");

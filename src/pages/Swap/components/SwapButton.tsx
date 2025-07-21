@@ -45,15 +45,24 @@ const SwapButton: React.FC<SwapButtonProps> = ({
 
   const getButtonText = () => {
     if (isSwapping || isApproving) {
-      return "Processing...";
+      return {
+        text: "Processing...",
+        disabled: true,
+      };
     }
     if (fromToken && toToken) {
       if (isBridgeOrPulse(fromToken, toToken) === SupportTypes.NotSupported) {
-        return "This is not supported";
+        return {
+          text: "This is not supported",
+          disabled: true,
+        };
       }
     }
     if (!account) {
-      return "Connect Wallet";
+      return {
+        text: "Connect Wallet",
+        disabled: false,
+      };
     }
     if (
       fromToken &&
@@ -61,7 +70,10 @@ const SwapButton: React.FC<SwapButtonProps> = ({
       Number(fromAmount) > 0 &&
       !hasSufficientBalance
     ) {
-      return "Insufficient Balance";
+      return {
+        text: "Insufficient Balance",
+        disabled: true,
+      };
     }
 
     if (
@@ -72,40 +84,44 @@ const SwapButton: React.FC<SwapButtonProps> = ({
     ) {
       return fromToken.address !== ZeroAddress
         ? isApproved
-          ? "Swap"
-          : "Approve Token"
-        : "Swap";
+          ? {
+              text: "Swap",
+              disabled: false,
+            }
+          : {
+              text: "Approve Token",
+              disabled: false,
+            }
+        : { text: "Swap", disabled: false };
     }
     if (fromToken && toToken && Number(fromAmount) > 0) {
-      return "Waiting for quote...";
+      return {
+        text: "Waiting for quote...",
+        disabled: true,
+      };
     }
     if (fromToken && toToken) {
-      return "Enter an Amount";
+      return {
+        text: "Enter an Amount",
+        disabled: true,
+      };
     }
-    return "Select Tokens";
+    return {
+      text: "Select Tokens",
+      disabled: true,
+    };
   };
-
-  const isDisabled =
-    !fromToken ||
-    !toToken ||
-    Number(fromAmount) <= 0 ||
-    Number(outputAmount) <= 0 ||
-    (!quote?.calldata && !isBridgeExchange) ||
-    isSwapping ||
-    isApproving ||
-    !hasSufficientBalance ||
-    isBridgeOrPulse(fromToken, toToken) === SupportTypes.NotSupported;
 
   return (
     <div className="flex items-center mt-3 sm:mt-4">
       <motion.button
         whileHover={{ scale: 1.05, backgroundColor: "#22c55e" }}
         whileTap={{ scale: 0.95 }}
-        disabled={isDisabled}
+        disabled={getButtonText().disabled}
         onClick={onSwap}
         className="flex-1 bg-green-500 text-black px-3 sm:px-4 py-2.5 sm:py-3 rounded-[16px] sm:rounded-[20px] min-w-[160px] sm:min-w-[200px] font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {getButtonText()}
+        {getButtonText().text}
       </motion.button>
     </div>
   );

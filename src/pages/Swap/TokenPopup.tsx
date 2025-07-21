@@ -63,7 +63,11 @@ const TokenPopup = ({
         }
       } else {
         // Set ETH as default when no token is selected
-        setChain(ChainSymbol.ETH);
+        if (selectType === "from") {
+          setChain(ChainSymbol.ETH);
+        } else {
+          setChain(ChainSymbol.PLS);
+        }
       }
     }
   }, [isOpen, selectType, fromToken, toToken]);
