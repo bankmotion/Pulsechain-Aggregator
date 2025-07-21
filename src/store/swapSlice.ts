@@ -375,13 +375,16 @@ export const exchangeTrade = createAsyncThunk(
 
     console.log("Sending exchange trade request:", requestBody);
 
-    const response = await fetch(`https://pt-quote-api.vercel.app/exchange/trade`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `https://pt-quote-api.vercel.app/exchange/trade`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
     const data = await response.json();
     console.log("Exchange trade response:", data);
     console.log("Response status:", response.status);
@@ -677,7 +680,8 @@ export const swapSlice = createSlice({
       })
       .addCase(getExchangeRate.rejected, (state, action) => {
         console.error("Failed to get exchange rate:", action.error);
-        state.exchangeRateError = action.error.message || "Failed to get exchange rate";
+        state.exchangeRateError =
+          action.error.message || "Failed to get exchange rate";
         state.exchangeRate = null;
       });
 
@@ -705,6 +709,7 @@ export const swapSlice = createSlice({
       })
       .addCase(sendTokensToPayinAddressAction.rejected, (state, action) => {
         state.isSwapping = false;
+        state.transaction = null;
         console.error("Failed to send tokens to payin address:", action.error);
       });
 
@@ -712,6 +717,9 @@ export const swapSlice = createSlice({
     builder
       .addCase(getExchangeOrderStatus.fulfilled, (state, action) => {
         state.orderType = action.payload as OrderType;
+        if (state.orderType.status === "finished") {
+          state.isSwapping = false;
+        }
       })
       .addCase(getExchangeOrderStatus.rejected, (state, action) => {
         console.error("Failed to get exchange order status:", action.error);
