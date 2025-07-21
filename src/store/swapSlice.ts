@@ -502,7 +502,9 @@ export const swapSlice = createSlice({
   extraReducers: (builder) => {
     // Handle getAvailableTokens
     builder
-      .addCase(getAvailableTokensFromChain.pending, (state) => {})
+      .addCase(getAvailableTokensFromChain.pending, (state) => {
+        state.availableTokens = [];
+      })
       .addCase(getAvailableTokensFromChain.fulfilled, (state, action) => {
         state.availableTokens = action.payload;
       })
@@ -627,6 +629,9 @@ export const swapSlice = createSlice({
       });
 
     // Handle getCurrencies
+    builder.addCase(getCurrencies.pending, (state) => {
+      state.availableTokens = [];
+    });
     builder
       .addCase(getCurrencies.fulfilled, (state, action) => {
         const currencies = (action.payload as CurrencyType[]).filter(
