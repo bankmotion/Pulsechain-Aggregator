@@ -2,13 +2,6 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { QuoteType, TokenType } from "../types/Swap";
 import { ethers } from "ethers";
 import { ZeroAddress, SwapManagerAddress } from "../const/swap";
-import {
-  createPublicClient,
-  http,
-  parseUnits,
-  parseEther,
-  type Address,
-} from "viem";
 import SwapManagerABI from "../abis/SwapManager.json";
 import ERC20ABI from "../abis/ERC20.json";
 import {

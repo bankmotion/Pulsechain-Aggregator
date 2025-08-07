@@ -3,6 +3,7 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import AppRoutes from "./routes";
+import Header from "./pages/Header";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -11,7 +12,10 @@ function App() {
     <Provider store={store}>
       <Router>
         <div className="min-h-screen bg-[#0f1123] text-white">
-          <AppRoutes />
+          <Header />
+          <main className="">
+            <AppRoutes />
+          </main>
           <ToastContainer
             position="top-right"
             autoClose={5000}

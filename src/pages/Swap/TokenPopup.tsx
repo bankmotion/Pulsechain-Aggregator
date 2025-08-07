@@ -38,13 +38,31 @@ const TokenPopup = ({
   const dispatch = useAppDispatch();
 
   const handleSetToken = (token: TokenType) => {
-    console.log(token);
     if (selectType === "from") {
       dispatch(setFromToken(token));
     } else {
       dispatch(setToToken(token));
     }
   };
+
+  // Filter for PulseChain tokens only
+  const pulsechainTokens = availableTokens.filter(
+    (token) => 
+      token.blockchainNetwork?.toLowerCase() === "pulsechain" ||
+      token.network?.toLowerCase() === "pulsechain" ||
+      token.blockchainNetwork?.toLowerCase() === "pls" ||
+      token.network?.toLowerCase() === "pls"
+  );
+
+  // Filter for PulseChain chains only
+  const pulsechainChains = allChains.filter(
+    (tempChain) =>
+      (tempChain.type === "NATIVE_ETH" || tempChain.type === "NATIVE") &&
+      (tempChain.network?.toLowerCase() === "pulsechain" ||
+       tempChain.network?.toLowerCase() === "pls" ||
+       tempChain.blockchainNetwork?.toLowerCase() === "pulsechain" ||
+       tempChain.blockchainNetwork?.toLowerCase() === "pls")
+  );
 
   return (
     <AnimatePresence>
@@ -131,19 +149,15 @@ const TokenPopup = ({
                   </div>
                   <div className="space-y-1 max-h-[200px] sm:max-h-[310px] overflow-y-auto custom-scrollbar pr-2">
                     <div className="flex items-center justify-center text-xs sm:text-sm text-gray-400">
-                      All Chains
+                      PulseChain Network
                     </div>
                     <hr className="border-gray-800" />
-                    {allChains
+                    {pulsechainChains
                       .filter(
                         (tempChain) =>
-                          (tempChain.type === "NATIVE_ETH" ||
-                            tempChain.type === "NATIVE") &&
                           tempChain.network
                             .toLowerCase()
-                            .includes(searchChain.toLowerCase()) &&
-                          (tempChain.network === "ETH" ||
-                            tempChain.network === "PULSECHAIN")
+                            .includes(searchChain.toLowerCase())
                       )
                       .map((tempChain, index) => (
                         <button
@@ -192,8 +206,8 @@ const TokenPopup = ({
                     </svg>
                   </div>
                   <div className="space-y-1.5 max-h-[200px] sm:max-h-[320px] overflow-y-auto custom-scrollbar">
-                    {availableTokens.length > 0
-                      ? availableTokens.map((token, index) => (
+                    {pulsechainTokens.length > 0
+                      ? pulsechainTokens.map((token, index) => (
                           <motion.button
                             key={index}
                             className="w-full flex items-center space-x-3 py-2 px-3 sm:px-4 rounded-lg bg-[#2b2e4a] hover:bg-[#3a3f5a] transition-all duration-200"

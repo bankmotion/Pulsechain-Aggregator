@@ -21,8 +21,6 @@ import {
   setNativeBalance,
 } from "../../store/swapSlice";
 import { TokenType } from "../../types/Swap";
-import Footer from "../Footer";
-import Header from "../Header";
 import TokenPopup from "./TokenPopup";
 import QuotePanel from "./QuotePanel";
 import SlippagePopup from "./SlippagePopup";
@@ -56,9 +54,7 @@ const Swap: React.FC = () => {
     slippage,
     availableTokens,
     isApproving,
-    isSwapping,
     isApproved,
-    transactionHash,
     fromTokenBalance,
     toTokenBalance,
     nativeBalance,
@@ -354,8 +350,6 @@ const Swap: React.FC = () => {
       animate={{ opacity: 1 }}
       className="min-h-screen bg-[#1a1c2c] text-white flex flex-col items-center justify-start px-2 sm:px-4 font-['Red_Hat_Display']"
     >
-      <Header />
-
       <motion.div className="w-full max-w-md pb-10 sm:pb-0 flex flex-col min-w-[320px] sm:min-w-[600px] mt-4 sm:mt-10 overflow-y-auto">
         <div className="flex flex-col bg-[#2b2e4a] rounded-2xl p-3 sm:p-6 w-full">
           <SwapHeader
