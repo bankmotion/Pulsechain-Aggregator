@@ -182,10 +182,10 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
 
       // Map progress to steps (0-1 to 1-4)
       // Each step represents ~25% of the total time (since we're only going up to Sending)
-      if (progress < 0.35) return 1; // Waiting (0-25%)
-      if (progress < 0.6) return 2; // Confirming (25-50%)
-      if (progress < 0.90) return 3; // Exchanging (50-75%)
-      return 4; // Sending (75-100%) - Stay here until API returns 'executed'
+      if (progress < 0.35) return 1; // Waiting (0-35%)
+      if (progress < 0.65) return 2; // Confirming (35-65%)
+      if (progress < 0.90) return 3; // Exchanging (65-90%)
+      return 4; // Sending (90-100%) - Stay here until API returns 'executed'
     }
     return 1;
   };
