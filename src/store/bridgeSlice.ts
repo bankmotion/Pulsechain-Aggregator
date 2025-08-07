@@ -119,10 +119,10 @@ export const fetchTokenPairs = createAsyncThunk(
       // Fetch tokens for both chains simultaneously
       const [ethResponse, plsResponse] = await Promise.all([
         fetch(
-          `http://135.181.55.207:3000/exchange/omnibridge/currencies?chainId=1&verified=true`
+          `https://pt-quote-api.vercel.app/exchange/omnibridge/currencies?chainId=1&verified=true`
         ),
         fetch(
-          `http://135.181.55.207:3000/exchange/omnibridge/currencies?chainId=369&verified=true`
+          `https://pt-quote-api.vercel.app/exchange/omnibridge/currencies?chainId=369&verified=true`
         ),
       ]);
 
@@ -248,7 +248,7 @@ export const fetchTokens = createAsyncThunk(
   }) => {
     try {
       const response = await fetch(
-        `http://135.181.55.207:3000/exchange/omnibridge/currencies?chainId=${chainId}&verified=${verified}`
+        `https://pt-quote-api.vercel.app/exchange/omnibridge/currencies?chainId=${chainId}&verified=${verified}`
       );
 
       if (!response.ok) {
@@ -391,7 +391,7 @@ export const fetchBridgeEstimate = createAsyncThunk(
   }) => {
     try {
       const response = await fetch(
-        `http://135.181.55.207:3000/exchange/omnibridge/estimate?tokenAddress=${tokenAddress}&networkId=${networkId}&amount=${amount}`
+        `https://pt-quote-api.vercel.app/exchange/omnibridge/estimate?tokenAddress=${tokenAddress}&networkId=${networkId}&amount=${amount}`
       );
 
       if (!response.ok) {
@@ -440,7 +440,7 @@ export const submitBridgeTransaction = createAsyncThunk(
   }) => {
     try {
       const response = await fetch(
-        "http://135.181.55.207:3000/exchange/omnibridge/transaction",
+        "https://pt-quote-api.vercel.app/exchange/omnibridge/transaction",
         {
           method: "POST",
           headers: {
@@ -478,7 +478,7 @@ export const pollBridgeTransactionStatus = createAsyncThunk(
   async (messageId: string) => {
     try {
       const response = await fetch(
-        `http://135.181.55.207:3000/exchange/omnibridge/transaction/${messageId}`
+        `https://pt-quote-api.vercel.app/exchange/omnibridge/transaction/${messageId}`
       );
 
       if (!response.ok) {
