@@ -40,7 +40,7 @@ const BridgeTransactionProgress: React.FC<BridgeTransactionProgressProps> = ({
       const createdAt = new Date(bridgeTransaction.createdAt).getTime();
       const now = Date.now();
       const elapsed = now - createdAt;
-      const totalExpectedTime = 96 * 12 * 1000; // 96 blocks * 12 seconds in milliseconds
+      const totalExpectedTime = 15 * 60 * 1000; // 15 minutes in milliseconds
       const progress = Math.min(elapsed / totalExpectedTime, 1);
       
       // Map progress to steps (0-1 to 1-4)
@@ -64,7 +64,7 @@ const BridgeTransactionProgress: React.FC<BridgeTransactionProgressProps> = ({
   ];
 
   const getStepStatus = (stepIndex: number) => {
-    if (stepIndex < currentStep) return 'completed';
+    if (stepIndex < currentStep || stepIndex === 4) return 'completed';
     if (stepIndex === currentStep) return 'current';
     return 'pending';
   };
