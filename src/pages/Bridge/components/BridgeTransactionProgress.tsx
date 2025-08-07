@@ -34,7 +34,7 @@ const BridgeTransactionProgress: React.FC<BridgeTransactionProgressProps> = ({
 
   // Calculate progress based on status and timestamps
   const getProgressStep = () => {
-    if (bridgeTransaction.status === 'executed') return 5;
+    if (bridgeTransaction.status === 'executed') return 4;
     if (bridgeTransaction.status === 'pending') {
       // Calculate progress based on time elapsed for steps 1-4 (Waiting, Confirming, Exchanging, Sending)
       const createdAt = new Date(bridgeTransaction.createdAt).getTime();
@@ -45,12 +45,12 @@ const BridgeTransactionProgress: React.FC<BridgeTransactionProgressProps> = ({
       
       // Map progress to steps (0-1 to 1-4)
       // Each step represents ~25% of the total time (since we're only going up to Sending)
-      if (progress < 0.35) return 1; // Waiting (0-35%)
-      if (progress < 0.65) return 2; // Confirming (35-65%)
-      if (progress < 0.90) return 3; // Exchanging (65-90%)
-      return 4; // Sending (90-100%) - Stay here until API returns 'executed'
+      if (progress < 0.35) return 0; // Waiting (0-35%)
+      if (progress < 0.65) return 1; // Confirming (35-65%)
+      if (progress < 0.90) return 2; // Exchanging (65-90%)
+      return 3; // Sending (90-100%) - Stay here until API returns 'executed'
     }
-    return 1;
+    return 0;
   };
 
   const currentStep = getProgressStep();
