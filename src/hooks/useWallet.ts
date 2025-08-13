@@ -88,60 +88,14 @@ const useWallet = () => {
     }
   }, [wallet]);
 
-  // Auto-switch to Pulsechain when wallet is connected (for backward compatibility)
-  useEffect(() => {
-    if (wallet?.provider) {
-      switchToPulsechain();
-    }
-  }, [wallet, switchToPulsechain]);
+  // Removed auto-switch to Pulsechain - let users manually select their preferred network
 
   const connectWallet = useCallback(async () => {
     const wallets = await connect();
     if (wallets[0] != null) {
       (window as any).provider = wallets[0].provider as any;
 
-      // Automatically switch to Pulsechain after connection (for backward compatibility)
-      try {
-        const provider = wallets[0].provider;
-        if (provider && provider.request) {
-          // Check if we're already on Pulsechain
-          const chainId = await provider.request({ method: "eth_chainId" });
-
-          if (chainId !== PulseChainConfig.chainIdHex) {
-            // Switch to Pulsechain
-            await provider.request({
-              method: "wallet_switchEthereumChain",
-              params: [{ chainId: PulseChainConfig.chainIdHex }],
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to switch to Pulsechain:", error);
-        // If the chain is not added, try to add it
-        try {
-          const provider = wallets[0].provider;
-          if (provider && provider.request) {
-            await provider.request({
-              method: "wallet_addEthereumChain",
-              params: [
-                {
-                  chainId: PulseChainConfig.chainIdHex,
-                  chainName: PulseChainConfig.chainName,
-                  nativeCurrency: {
-                    name: PulseChainConfig.chainSymbol,
-                    symbol: PulseChainConfig.chainSymbol,
-                    decimals: 18,
-                  },
-                  rpcUrls: PulseChainConfig.providerList,
-                  blockExplorerUrls: [PulseChainConfig.explorerUrl],
-                },
-              ],
-            });
-          }
-        } catch (addError) {
-          console.error("Failed to add Pulsechain:", addError);
-        }
-      }
+      // Removed auto-switching - let users manually select their preferred network
     }
   }, [connect]);
 

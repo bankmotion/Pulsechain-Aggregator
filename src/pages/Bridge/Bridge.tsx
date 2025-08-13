@@ -207,7 +207,7 @@ const Bridge: React.FC = () => {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="min-h-screen bg-gradient-to-br from-[#1a1c2c] via-[#1e2030] to-[#1a1c2c] text-white flex flex-col items-center justify-start px-4 sm:px-6 lg:px-8 font-['Red_Hat_Display'] relative overflow-hidden"
     >
-      <div className="relative z-10 w-full max-w-2xl mx-auto pt-8 sm:pt-12 lg:pt-16 pb-8">
+      <div className="relative z-10 w-full max-w-4xl mx-auto pt-8 sm:pt-12 lg:pt-16 pb-8">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}

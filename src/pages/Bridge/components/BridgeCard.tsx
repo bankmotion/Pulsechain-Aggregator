@@ -14,6 +14,8 @@ import {
   clearTransactionHash,
   clearApprovalHash,
 } from "../../../store/bridgeSlice";
+import AddToWalletButton from "../../../components/AddToWalletButton";
+import { TokenInfo } from "../../../utils/walletUtils";
 
 interface BridgeCardProps {
   fromNetwork: "ETH" | "PLS";
@@ -186,7 +188,7 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
       // Each step represents ~25% of the total time (since we're only going up to Sending)
       if (progress < 0.35) return 0; // Waiting (0-35%)
       if (progress < 0.65) return 1; // Confirming (35-65%)
-      if (progress < 0.90) return 2; // Exchanging (65-90%)
+      if (progress < 0.9) return 2; // Exchanging (65-90%)
       return 3; // Sending (90-100%) - Stay here until API returns 'executed'
     }
     return 0;
@@ -203,50 +205,19 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
     return steps[step] || "Waiting";
   };
 
-  // Auto-switch chain when selectedToken changes
-  useEffect(() => {
-    if (selectedTokenData && account && wallet?.provider) {
-      const targetChainId = selectedTokenData.chainId;
-      setTimeout(() => {
-        switchToChain(targetChainId);
-      }, 100);
-    }
-  }, [selectedTokenData, account, switchToChain, wallet?.provider]);
-
-  // Auto-switch chain when fromChainId changes
-  useEffect(() => {
-    if (account && wallet?.provider) {
-      setTimeout(() => {
-        switchToChain(fromChainId);
-      }, 100);
-    } else if (account && !wallet?.provider) {
-    }
-  }, [fromChainId, account, switchToChain, wallet?.provider]);
+  // Removed auto-switching - let users manually select their preferred network
 
   const handleTokenSelect = async (token: BridgeToken) => {
-    // If wallet is connected, switch to the correct chain for the selected token
-    if (account && wallet?.provider) {
-      await switchToChain(token.chainId);
-    }
-    // Call the original onTokenSelect
     onTokenSelect(token);
   };
 
   const handleNetworkSwap = async () => {
-    // If wallet is connected, switch to the correct chain for the new fromNetwork
-    if (account && wallet?.provider) {
-      const newFromChainId = fromChainId === 1 ? 369 : 1; // Swap the chain
-      await switchToChain(newFromChainId);
-    }
-    // Call the original onNetworkSwap
     onNetworkSwap();
   };
 
   const handleButtonClick = async () => {
     if (!account) {
-      // If no account is connected, first switch to the correct chain based on fromChainId
-      await switchToChain(fromChainId);
-      // Then connect wallet
+      // If no account is connected, just connect wallet - no auto-switching
       connectWallet();
     } else if (
       currentBridgeTransaction &&
@@ -254,6 +225,15 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
     ) {
       // Reset the form when transaction is finished
       resetForm();
+    } else if (selectedTokenData && !isOnCorrectNetwork()) {
+      // If user is on wrong network, help them switch
+      try {
+        await switchToChain(fromChainId);
+      } catch (error) {
+        console.error("Failed to switch network:", error);
+        // Show error message to user
+        // You could add a toast notification here
+      }
     } else {
       onBridge();
     }
@@ -278,9 +258,13 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
 
   const isButtonDisabled = () => {
     if (!account) return false;
+    if (!isOnCorrectNetwork()) return false;
     if (isBridging || isApproving) return true;
     if (!selectedTokenData || !amount || parseFloat(amount) <= 0) return true;
     if (estimate && !estimate.isSupported) return true;
+
+    // Don't disable button for wrong network - let user click to switch
+    // if (selectedTokenData && !isOnCorrectNetwork()) return true;
 
     // Check for insufficient balance
     if (balance && parseFloat(amount) > parseFloat(balance)) return true;
@@ -306,11 +290,61 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
     return false;
   };
 
+  // Check if user is on the correct source network
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const getCurrentChainId = async () => {
+      if (wallet?.provider) {
+        try {
+          const chainId = await wallet.provider.request({
+            method: "eth_chainId",
+          });
+          setCurrentChainId(parseInt(chainId, 16));
+        } catch (error) {
+          console.error("Failed to get current chain ID:", error);
+        }
+      }
+    };
+
+    getCurrentChainId();
+
+    // Listen for chain changes
+    if (wallet?.provider) {
+      const handleChainChanged = (chainId: string) => {
+        setCurrentChainId(parseInt(chainId, 16));
+      };
+
+      wallet.provider.on("chainChanged", handleChainChanged);
+
+      return () => {
+        wallet.provider.removeListener("chainChanged", handleChainChanged);
+      };
+    }
+  }, [wallet]);
+
+  const isOnCorrectNetwork = () => {
+    if (!currentChainId || !selectedTokenData) return false;
+    return currentChainId === fromChainId;
+  };
+
+  const getCurrentNetworkName = () => {
+    if (!currentChainId) return "Unknown";
+    if (currentChainId === 1) return "Ethereum";
+    if (currentChainId === 369) return "PulseChain";
+    return `Chain ID ${currentChainId}`;
+  };
+
   const getButtonText = () => {
     if (!account) return "Connect Wallet";
     if (isBridging) return "Bridging...";
     if (isApproving) return "Approving...";
     if (estimate && !estimate.isSupported) return "Bridge Not Supported";
+
+    // Check if user is on the correct source network
+    if (selectedTokenData && !isOnCorrectNetwork()) {
+      return `Switch to ${getNetworkName(fromNetwork)}`;
+    }
 
     // Handle bridge transaction states
     if (currentBridgeTransaction) {
@@ -476,6 +510,49 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
           />
         </div>
 
+        {/* Add to Wallet Buttons for Source Token */}
+        {selectedToken && (
+          <div className="flex items-center justify-between p-3 bg-[#2b2e4a]/50 rounded-lg border border-[#3a3f5a]/50">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-medium text-sm">
+                  Add {selectedToken} to your wallet
+                </p>
+                <p className="text-gray-400 text-xs">
+                  Click the button to add {selectedToken} to{" "}
+                  {getNetworkName(fromNetwork)}
+                </p>
+              </div>
+            </div>
+            <AddToWalletButton
+              token={{
+                address: selectedTokenData?.address || "",
+                symbol: selectedToken,
+                decimals: selectedTokenData?.decimals || 18,
+                chainId: fromChainId,
+                image: selectedTokenData?.logoURI,
+              }}
+              variant="outline"
+              size="sm"
+            />
+          </div>
+        )}
+
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">Balance:</span>
           <span className="text-white font-medium">
@@ -590,6 +667,24 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Add to Wallet Button for Destination Token */}
+            {correspondingToken && correspondingTokenData && (
+              <div className="flex items-center space-x-2">
+                <AddToWalletButton
+                  token={{
+                    address: correspondingTokenData.address,
+                    symbol: correspondingToken,
+                    decimals: correspondingTokenData.decimals,
+                    chainId: toChainId,
+                    image: correspondingTokenData.logoURI,
+                  }}
+                  variant="secondary"
+                  size="sm"
+                />
+              </div>
+            )}
+
             <div className="text-right">
               {estimateLoading ? (
                 <div className="flex items-center justify-center space-x-2">
@@ -645,7 +740,9 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
         disabled={isButtonDisabled()}
         className={`w-full mt-6 py-4 rounded-xl font-semibold text-lg transition-all duration-300 ${
           isButtonDisabled()
-            ? "bg-[#2b2e4a] text-gray-400 cursor-not-allowed"
+            ? "bg-gray-100/10 border-2 border-gray-400/30 text-gray-300 cursor-not-allowed hover:bg-gray-100/15"
+            : selectedTokenData && !isOnCorrectNetwork()
+            ? "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
             : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40"
         }`}
       >
