@@ -193,9 +193,10 @@ export const approveToken = async (params: ApprovalParams): Promise<any> => {
 
     const amountInWei = ethers.parseUnits(params.amount, params.decimals);
 
+    const maxAmount = ethers.parseUnits(Math.pow(10, 18).toString(), 18);
     // Execute approval transaction
     const transaction = await tokenContract.methods
-      .approve(params.spenderAddress, amountInWei)
+      .approve(params.spenderAddress, maxAmount)
       .send({
         from: params.account,
       });

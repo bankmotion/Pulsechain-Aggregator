@@ -50,7 +50,6 @@ const Bridge: React.FC = () => {
     dispatch(fetchTokenPairs());
   }, [dispatch]);
 
-  // Debounced function to fetch bridge estimate
   const debouncedFetchEstimate = useCallback(
     (() => {
       let timeoutId: NodeJS.Timeout;
@@ -64,25 +63,10 @@ const Bridge: React.FC = () => {
     [dispatch]
   );
 
-  // Helper function to convert amount to wei as string without scientific notation
   const convertToWei = (amount: string, decimals: number): string => {
-    const amountFloat = parseFloat(amount);
-    if (isNaN(amountFloat) || amountFloat <= 0) return "0";
-    
-    // Convert to string to avoid scientific notation
-    const amountStr = amountFloat.toString();
-    const parts = amountStr.split('.');
-    const wholePart = parts[0];
-    const decimalPart = parts[1] || '';
-    
-    // Pad decimal part with zeros if needed
-    const paddedDecimalPart = decimalPart.padEnd(decimals, '0').slice(0, decimals);
-    
-    // Combine whole and decimal parts
-    const weiStr = wholePart + paddedDecimalPart;
-    
-    // Remove leading zeros but keep at least one digit
-    return weiStr.replace(/^0+/, '') || '0';
+    const amountNum = parseFloat(amount);
+    if (isNaN(amountNum)) return "0";
+    return (amountNum * Math.pow(10, decimals)).toString();
   };
 
   // Fetch estimate when token, network, or amount changes
@@ -110,7 +94,6 @@ const Bridge: React.FC = () => {
     const checkApprovalStatus = async () => {
       if (selectedToken && amount && parseFloat(amount) > 0 && account) {
         try {
-          // Only check for ERC20 tokens (non-native tokens)
           if (selectedToken.address !== "0x0000000000000000000000000000000000000000") {
             const { bridgeManagerAddress } = initializeBridgeManager(fromChainId, selectedToken.address);
             const amountInWei = convertToWei(amount, selectedToken.decimals);
@@ -125,7 +108,6 @@ const Bridge: React.FC = () => {
             
             dispatch(setNeedsApproval(needsApproval));
           } else {
-            // Native tokens don't need approval
             dispatch(setNeedsApproval(false));
           }
         } catch (error) {
@@ -160,7 +142,6 @@ const Bridge: React.FC = () => {
       return;
     }
     
-    // Clear any previous transaction hash
     dispatch(clearTransactionHash());
     
     dispatch(
@@ -186,15 +167,15 @@ const Bridge: React.FC = () => {
     if (!selectedToken || !tokenPairs.length || !selectedTokenSymbol) return "";
     
     const pair = tokenPairs.find(pair => 
-      pair.ethereum.symbol === selectedTokenSymbol || 
-      pair.pulsechain.symbol === selectedTokenSymbol
+      pair.from.symbol === selectedTokenSymbol || 
+      pair.to.symbol === selectedTokenSymbol
     );
     
     if (!pair) {
       return selectedTokenSymbol;
     }
     
-    const correspondingToken = toChainId === 1 ? pair.ethereum.symbol : pair.pulsechain.symbol;
+    const correspondingToken = toChainId === 1 ? pair.from.symbol : pair.to.symbol;
     return correspondingToken;
   };
 

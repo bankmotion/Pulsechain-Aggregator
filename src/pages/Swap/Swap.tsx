@@ -19,6 +19,7 @@ import {
   setFromTokenBalance,
   setToTokenBalance,
   setNativeBalance,
+  refreshBalancesAfterSwap,
 } from "../../store/swapSlice";
 import { TokenType } from "../../types/Swap";
 import TokenPopup from "./TokenPopup";
@@ -44,6 +45,7 @@ const Swap: React.FC = () => {
   const [selectType, setSelectType] = useState<"from" | "to" | null>(null);
   const [searchChain, setSearchChain] = useState<string>("");
   const [searchToken, setSearchToken] = useState<string>("");
+  const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
 
   const {
     allChains,
@@ -145,6 +147,23 @@ const Swap: React.FC = () => {
           })
         ).unwrap();
         toast.success("Swap executed successfully!");
+        
+        // Refresh balances after successful swap
+        if (account) {
+          setIsRefreshingBalances(true);
+          // Add a small delay to ensure blockchain state is updated
+          setTimeout(() => {
+            dispatch(
+              refreshBalancesAfterSwap({
+                fromToken,
+                toToken,
+                account,
+              })
+            ).catch(() => {
+              handleBalanceRefreshError();
+            });
+          }, 2000); // Wait 2 seconds for blockchain state to update
+        }
       }
     } catch (error) {
       console.error("Swap error:", error);
@@ -249,7 +268,6 @@ const Swap: React.FC = () => {
     }
   }, [dispatch, toToken?.address, toToken?.blockchainNetwork]);
 
-  // Quote fetching logic
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -344,6 +362,32 @@ const Swap: React.FC = () => {
     }
   }, [dispatch, fromToken?.address, fromAmount, fromToken?.decimals, account]);
 
+  useEffect(() => {
+    if (isRefreshingBalances) {
+      setIsRefreshingBalances(false);
+    }
+  }, [fromTokenBalance, toTokenBalance, nativeBalance, isRefreshingBalances]);
+
+  const handleBalanceRefreshError = () => {
+    toast.error("Failed to refresh balances. Please try again.");
+    setIsRefreshingBalances(false);
+  };
+
+  const refreshBalances = () => {
+    if (account && fromToken && toToken) {
+      setIsRefreshingBalances(true);
+      dispatch(
+        refreshBalancesAfterSwap({
+          fromToken,
+          toToken,
+          account,
+        })
+      ).catch(() => {
+        handleBalanceRefreshError();
+      });
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -355,6 +399,8 @@ const Swap: React.FC = () => {
           <SwapHeader
             slippage={slippage}
             onSlippageClick={() => setIsSlippagePopupOpen(true)}
+            onRefreshClick={refreshBalances}
+            isRefreshing={isRefreshingBalances}
           />
 
           <SwapCard

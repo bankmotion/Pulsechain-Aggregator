@@ -169,38 +169,22 @@ const AddToWalletButton: React.FC<AddToWalletButtonProps> = ({
           </div>
         ) : !isOnCorrectNetwork() ? (
           <div className="flex items-center space-x-2">
-            <svg
+            <img 
+              src="/metamask.png" 
+              alt="MetaMask" 
               className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
               />
-            </svg>
             <span>
               Switch to {getRequiredNetworkName()} & Add {token.symbol}
             </span>
           </div>
         ) : (
           <div className="flex items-center space-x-2">
-            <svg
+            <img 
+              src="/metamask.png" 
+              alt="MetaMask" 
               className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
               />
-            </svg>
             <span>Add {token.symbol} to Wallet</span>
           </div>
         )}

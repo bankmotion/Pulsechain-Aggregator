@@ -11,7 +11,6 @@ const QuotePanel = () => {
   );
 
   const [showRoute, setShowRoute] = useState(false);
-  // TODO: Replace with real data from props or Redux
   const apiVersion = "2.3";
 
   const [open, setOpen] = useState(true);

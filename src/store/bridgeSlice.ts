@@ -44,17 +44,18 @@ export interface BridgeTransaction {
   tokenSymbol: string;
   tokenDecimals: number;
   amount: string;
-  status: string;
+  status: "pending" | "executed" | "failed";
   sourceTimestamp: string;
   targetTimestamp: string | null;
   encodedData: string | null;
   createdAt: string;
   updatedAt: string;
+  humanReadableAmount?: string;
 }
 
 export interface TokenPair {
-  ethereum: BridgeToken;
-  pulsechain: BridgeToken;
+  from: BridgeToken;
+  to: BridgeToken;
 }
 
 interface BridgeState {
@@ -89,8 +90,8 @@ const initialState: BridgeState = {
   tokenPairs: [],
   loading: false,
   error: null,
-  fromChainId: 1, // Ethereum
-  toChainId: 369, // PulseChain
+  fromChainId: 1,
+  toChainId: 369,
   selectedToken: null,
   amount: "",
   isBridging: false,
@@ -148,77 +149,63 @@ export const fetchTokenPairs = createAsyncThunk(
       const ethereumTokens = ethData.data as BridgeToken[];
       const pulsechainTokens = plsData.data as BridgeToken[];
 
-      // Create token pairs with special handling for ETH/WETH
       const tokenPairs: TokenPair[] = [];
 
-      // Find ETH and WETH tokens
-      const ethToken = ethereumTokens.find(
-        (token) =>
-          token.symbol === "ETH" &&
-          token.address === "0x0000000000000000000000000000000000000000"
-      );
-      const wethToken = ethereumTokens.find(
-        (token) => token.symbol === "WETH" || token.symbol === "Wrapped Ether"
-      );
-      const plsToken = pulsechainTokens.find(
-        (token) =>
-          token.symbol === "PLS" &&
-          token.address === "0x0000000000000000000000000000000000000000"
-      );
-      const wplsToken = pulsechainTokens.find(
-        (token) => token.symbol === "WPLS" || token.symbol === "Wrapped Pulse"
-      );
+      const findTokenBySymbol = (tokens: BridgeToken[], symbol: string): BridgeToken | undefined => {
+        return tokens.find(token => token.symbol === symbol);
+      };
 
-      // Find WPLS on Ethereum (if it exists)
-      const wplsEthToken = ethereumTokens.find(
-        (token) => token.symbol === "WPLS" || token.symbol === "Wrapped Pulse"
-      );
+      // Ethereum (from) -> PulseChain (to) mappings
+      const ethToPlsMappings = [
+        { ethSymbol: "ETH", plsSymbol: "WETH from Ethereum" },
+        { ethSymbol: "WPLS", plsSymbol: "WPLS" },
+        { ethSymbol: "HEX", plsSymbol: "HEX from Ethereum" },
+        { ethSymbol: "WETH", plsSymbol: "WETH from Ethereum" },
+        { ethSymbol: "DAI", plsSymbol: "DAI from Ethereum" },
+        { ethSymbol: "USDC", plsSymbol: "USDC from Ethereum" },
+        { ethSymbol: "USDT", plsSymbol: "USDT from Ethereum" },
+        { ethSymbol: "WBTC", plsSymbol: "WBTC from Ethereum" },
+        { ethSymbol: "PLSX from PulseChain", plsSymbol: "PLSX" },
+      ];
 
-      // Create ETH/WETH pair - ETH maps to WETH
-      if (ethToken && wethToken) {
+      // PulseChain (from) -> Ethereum (to) mappings
+      const plsToEthMappings = [
+        { plsSymbol: "PLS", ethSymbol: "WPLS" },
+        { plsSymbol: "WPLS", ethSymbol: "WPLS" },
+        { plsSymbol: "HEX from Ethereum", ethSymbol: "HEX" },
+        { plsSymbol: "WETH from Ethereum", ethSymbol: "WETH" },
+        { plsSymbol: "DAI from Ethereum", ethSymbol: "DAI" },
+        { plsSymbol: "USDC from Ethereum", ethSymbol: "USDC" },
+        { plsSymbol: "USDT from Ethereum", ethSymbol: "USDT" },
+        { plsSymbol: "WBTC from Ethereum", ethSymbol: "WBTC" },
+        { plsSymbol: "PLSX", ethSymbol: "PLSX from PulseChain" },
+      ];
+
+      // Create pairs for Ethereum -> PulseChain
+      ethToPlsMappings.forEach((mapping) => {
+        const ethToken = findTokenBySymbol(ethereumTokens, mapping.ethSymbol);
+        const plsToken = findTokenBySymbol(pulsechainTokens, mapping.plsSymbol);
+
+        if (ethToken && plsToken) {
         tokenPairs.push({
-          ethereum: ethToken, // ETH (native)
-          pulsechain: wethToken, // WETH (wrapped)
+            from: ethToken,
+            to: plsToken,
         });
       }
+      });
 
-      // Create WPLS/WPLS pair - WPLS on Ethereum maps to WPLS on PulseChain
-      if (wplsEthToken && wplsToken) {
-        tokenPairs.push({
-          ethereum: wplsEthToken, // WPLS on Ethereum
-          pulsechain: wplsToken, // WPLS on PulseChain
-        });
-      }
+      // Create pairs for PulseChain -> Ethereum
+      plsToEthMappings.forEach((mapping) => {
+        const plsToken = findTokenBySymbol(pulsechainTokens, mapping.plsSymbol);
+        const ethToken = findTokenBySymbol(ethereumTokens, mapping.ethSymbol);
 
-      // Create other token pairs by matching symbols (excluding ETH/WETH/PLS/WPLS)
-      const otherEthTokens = ethereumTokens.filter(
-        (token) =>
-          token.symbol !== "ETH" &&
-          token.symbol !== "WETH" &&
-          token.symbol !== "Wrapped Ether" &&
-          token.symbol !== "WPLS" &&
-          token.symbol !== "Wrapped Pulse"
-      );
-      const otherPlsTokens = pulsechainTokens.filter(
-        (token) =>
-          token.symbol !== "PLS" &&
-          token.symbol !== "WPLS" &&
-          token.symbol !== "Wrapped Pulse"
-      );
-
-      // Match other tokens by symbol
-      for (const ethToken of otherEthTokens) {
-        const matchingPlsToken = otherPlsTokens.find(
-          (plsToken) => plsToken.symbol === ethToken.symbol
-        );
-
-        if (matchingPlsToken) {
+        if (plsToken && ethToken) {
           tokenPairs.push({
-            ethereum: ethToken,
-            pulsechain: matchingPlsToken,
+            from: plsToken,
+            to: ethToken,
           });
         }
-      }
+      });
 
       // Combine all tokens for the token selector
       const allTokens = [...ethereumTokens, ...pulsechainTokens];
@@ -533,15 +520,14 @@ const bridgeSlice = createSlice({
         // Find the token pair that contains the current token
         const pair = state.tokenPairs.find(
           (pair) =>
-            pair.ethereum.symbol === currentTokenSymbol ||
-            pair.pulsechain.symbol === currentTokenSymbol
+            pair.from.symbol === currentTokenSymbol ||
+            pair.to.symbol === currentTokenSymbol
         );
 
         if (pair) {
           // If we're swapping from Ethereum to PulseChain, get the PulseChain token
           // If we're swapping from PulseChain to Ethereum, get the Ethereum token
-          const correspondingToken =
-            oldFromChainId === 1 ? pair.pulsechain : pair.ethereum;
+          const correspondingToken = oldFromChainId === 1 ? pair.to : pair.from;
           state.selectedToken = correspondingToken;
         } else {
           // If no pair found, clear the selected token
@@ -639,7 +625,7 @@ const bridgeSlice = createSlice({
       })
       .addCase(bridgeTokens.rejected, (state, action) => {
         state.isBridging = false;
-        state.isApproving = false; // Reset approving state on error
+        state.isApproving = false;
         state.error = action.error.message || "Bridge transaction failed";
       })
       // Handle fetchBridgeEstimate

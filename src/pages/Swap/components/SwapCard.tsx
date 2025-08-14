@@ -4,9 +4,10 @@ import { TokenType } from "../../../types/Swap";
 import AmountInput from "./AmountInput";
 import TokenSelector from "./TokenSelector";
 import TokenSwapButton from "./TokenSwapButton";
-import AddToWalletButton from "../../../components/AddToWalletButton";
-import { TokenInfo } from "../../../utils/walletUtils";
+
+import { addTokenToWallet } from "../../../utils/walletUtils";
 import useWallet from "../../../hooks/useWallet";
+import { toast } from "react-toastify";
 
 interface SwapCardProps {
   fromToken: TokenType | null;
@@ -39,10 +40,9 @@ const SwapCard: React.FC<SwapCardProps> = ({
   toTokenBalance,
   nativeBalance,
 }) => {
-  const { wallet } = useWallet();
+  const { wallet, switchToChain } = useWallet();
   const [currentChainId, setCurrentChainId] = useState<number | null>(null);
 
-  // Get current network from wallet
   useEffect(() => {
     const getCurrentChainId = async () => {
       if (wallet?.provider) {
@@ -59,7 +59,6 @@ const SwapCard: React.FC<SwapCardProps> = ({
 
     getCurrentChainId();
 
-    // Listen for chain changes
     if (wallet?.provider) {
       const handleChainChanged = (chainId: string) => {
         setCurrentChainId(parseInt(chainId, 16));
@@ -73,27 +72,16 @@ const SwapCard: React.FC<SwapCardProps> = ({
     }
   }, [wallet]);
 
-  // Check if user is on PulseChain (required for swap)
   const isOnPulseChain = () => {
     return currentChainId === 369;
   };
 
-  // Get current network name
   const getCurrentNetworkName = () => {
     if (!currentChainId) return "Unknown";
     if (currentChainId === 1) return "Ethereum";
     if (currentChainId === 369) return "PulseChain";
     return `Chain ID ${currentChainId}`;
   };
-
-  // Convert TokenType to TokenInfo for AddToWalletButton
-  const convertToTokenInfo = (token: TokenType): TokenInfo => ({
-    address: token.address,
-    symbol: token.symbol,
-    decimals: token.decimals,
-    chainId: 369, // PulseChain only
-    image: token.image,
-  });
 
   const formatBalance = (balance: string) => {
     const num = parseFloat(balance);
@@ -133,12 +121,86 @@ const SwapCard: React.FC<SwapCardProps> = ({
             </div>
           )}
         </div>
-        <AmountInput
-          amount={fromAmount}
-          token={fromToken}
-          onAmountChange={onFromAmountChange}
-          isOutput={false}
-        />
+        <div className="flex items-center">
+          <AmountInput
+            amount={fromAmount}
+            token={fromToken}
+            onAmountChange={onFromAmountChange}
+            isOutput={false}
+            balance={
+              fromToken?.address ===
+              "0x0000000000000000000000000000000000000000"
+                ? nativeBalance
+                : fromTokenBalance
+            }
+            balanceLoading={false}
+          />
+          {fromToken && (
+            <>
+              <button
+                onClick={() => {
+                  if (fromToken?.address) {
+                    navigator.clipboard.writeText(fromToken.address);
+                    toast.success("Token address copied to clipboard");
+                  }
+                }}
+                className="p-1 hover:bg-[#3a3f5a]/50 rounded-lg transition-colors duration-200 flex-shrink-0 w-8 h-8 flex items-center justify-center ml-2"
+                title="Copy token address"
+              >
+                <svg
+                  className="w-4 h-4 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={async () => {
+                  if (!wallet) return;
+
+                  try {
+                    if (!isOnPulseChain()) {
+                      await switchToChain(369);
+                      await new Promise((resolve) => setTimeout(resolve, 1000));
+                    }
+
+                    const success = await addTokenToWallet(
+                      {
+                        address: fromToken.address,
+                        symbol: fromToken.symbol,
+                        decimals: fromToken.decimals,
+                        chainId: 369,
+                        image: fromToken.image,
+                      },
+                      wallet
+                    );
+
+                    if (success) {
+                      // Show success feedback
+                    }
+                  } catch (error) {
+                    console.error("Error adding token:", error);
+                  }
+                }}
+                className="p-1.5 sm:p-2 hover:bg-[#3a3f5a]/50 rounded-lg transition-all duration-200 hover:scale-105 flex-shrink-0 border border-transparent hover:border-[#4a4f6a]/30"
+                title={`Add ${fromToken.symbol} to MetaMask`}
+              >
+                <img
+                  src="/metamask.png"
+                  alt="MetaMask"
+                  className="w-4 h-4 sm:w-5 sm:h-5"
+                />
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Swap Button */}
@@ -159,95 +221,88 @@ const SwapCard: React.FC<SwapCardProps> = ({
             </div>
           )}
         </div>
-        <AmountInput
-          amount=""
-          token={toToken}
-          onAmountChange={() => {}}
-          isOutput={true}
-          outputAmount={outputAmount}
-          isLoading={isLoadingQuote}
-        />
+        <div className="flex items-center">
+          <AmountInput
+            amount=""
+            token={toToken}
+            onAmountChange={() => {}}
+            isOutput={true}
+            outputAmount={outputAmount}
+            isLoading={isLoadingQuote}
+            balance={
+              toToken?.address === "0x0000000000000000000000000000000000000000"
+                ? nativeBalance
+                : toTokenBalance
+            }
+            balanceLoading={false}
+          />
+          {toToken && (
+            <>
+              <button
+                onClick={() => {
+                  if (toToken?.address) {
+                    navigator.clipboard.writeText(toToken.address);
+                    toast.success("Token address copied to clipboard");
+                  }
+                }}
+                className="p-1 hover:bg-[#3a3f5a]/50 rounded-lg transition-colors duration-200 flex-shrink-0 w-8 h-8 flex items-center justify-center ml-2"
+                title="Copy token address"
+              >
+                <svg
+                  className="w-4 h-4 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={async () => {
+                  if (!wallet) return;
+
+                  try {
+                    if (!isOnPulseChain()) {
+                      await switchToChain(369);
+                      await new Promise((resolve) => setTimeout(resolve, 1000));
+                    }
+
+                    const success = await addTokenToWallet(
+                      {
+                        address: toToken.address,
+                        symbol: toToken.symbol,
+                        decimals: toToken.decimals,
+                        chainId: 369,
+                        image: toToken.image,
+                      },
+                      wallet
+                    );
+
+                    if (success) {
+                      // Show success feedback
+                    }
+                  } catch (error) {
+                    console.error("Error adding token:", error);
+                  }
+                }}
+                className="p-1.5 sm:p-2 hover:bg-[#3a3f5a]/50 rounded-lg transition-all duration-200 hover:scale-105 flex-shrink-0 border border-transparent hover:border-[#4a4f6a]/30"
+                title={`Add ${toToken.symbol} to MetaMask`}
+              >
+                <img
+                  src="/metamask.png"
+                  alt="MetaMask"
+                  className="w-4 h-4 sm:w-5 sm:h-5"
+                />
+              </button>
+            </>
+          )}
+        </div>
       </div>
-
-      {/* Network Status and Add to Wallet Section */}
-      {wallet && (
-        <>
-          {/* Add to Wallet Buttons */}
-          <div className="mt-4 space-y-3">
-            {/* From Token Add to Wallet */}
-            {fromToken && (
-              <div className="flex items-center justify-between p-3 bg-[#2b2e4a]/50 rounded-lg border border-[#3a3f5a]/50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium text-sm">
-                      Add {fromToken.symbol} to your wallet
-                    </p>
-                    <p className="text-gray-400 text-xs">
-                      Click the button to add {fromToken.symbol} to PulseChain
-                    </p>
-                  </div>
-                </div>
-                <AddToWalletButton
-                  token={convertToTokenInfo(fromToken)}
-                  variant="outline"
-                  size="sm"
-                />
-              </div>
-            )}
-
-            {/* To Token Add to Wallet */}
-            {toToken && (
-              <div className="flex items-center justify-between p-3 bg-[#2b2e4a]/50 rounded-lg border border-[#3a3f5a]/50">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium text-sm">
-                      Add {toToken.symbol} to your wallet
-                    </p>
-                    <p className="text-gray-400 text-xs">
-                      Click the button to add {toToken.symbol} to PulseChain
-                    </p>
-                  </div>
-                </div>
-                <AddToWalletButton
-                  token={convertToTokenInfo(toToken)}
-                  variant="secondary"
-                  size="sm"
-                />
-              </div>
-            )}
-          </div>
-        </>
-      )}
     </motion.div>
   );
 };

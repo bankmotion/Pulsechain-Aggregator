@@ -26,14 +26,34 @@ const Navbar: React.FC = () => {
                   : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               }`}
             >
-              Home
+              Swap
+            </Link>
+            <Link
+              to="/bridge"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                isActive('/bridge')
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              Bridge
+            </Link>
+            <Link
+              to="/activity"
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                isActive('/activity')
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              Activity
             </Link>
             <Link
               to="/about"
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 isActive('/about')
                   ? 'bg-gray-900 text-white'
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  : 'text-gray-700 hover:bg-gray-700 hover:text-white'
               }`}
             >
               About

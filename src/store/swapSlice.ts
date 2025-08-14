@@ -2,13 +2,12 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { QuoteType, TokenType } from "../types/Swap";
 import { ethers } from "ethers";
 import { ZeroAddress, SwapManagerAddress } from "../const/swap";
-import SwapManagerABI from "../abis/SwapManager.json";
-import ERC20ABI from "../abis/ERC20.json";
 import {
   approveToken,
   executeSwap,
   getTokenAllowance,
   needsApproval,
+  createSwapManager,
 } from "../contracts/SwapManager";
 import { config } from "process";
 
@@ -67,16 +66,15 @@ export const getTokenBalance = createAsyncThunk(
     if (!userAddress) return "0";
 
     try {
+      const swapManager = createSwapManager();
+      const balance = await swapManager.getTokenBalance(tokenAddress, userAddress, decimals);
+      
+      // Convert from wei to human readable format
       if (tokenAddress === ZeroAddress) {
-        // Get native balance
-        const provider = new ethers.BrowserProvider((window as any).provider);
-        const balance = await provider.getBalance(userAddress);
+        // Native token balance is already in wei, convert to ether
         return ethers.formatEther(balance);
       } else {
-        // Get ERC20 token balance
-        const provider = new ethers.BrowserProvider((window as any).provider);
-        const contract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
-        const balance = await contract.balanceOf(userAddress);
+        // ERC20 token balance is already in wei, convert to token units
         return ethers.formatUnits(balance, decimals);
       }
     } catch (error) {
@@ -93,8 +91,8 @@ export const getNativeBalance = createAsyncThunk(
     if (!userAddress) return "0";
 
     try {
-      const provider = new ethers.BrowserProvider((window as any).provider);
-      const balance = await provider.getBalance(userAddress);
+      const swapManager = createSwapManager();
+      const balance = await swapManager.getTokenBalance(ZeroAddress, userAddress, 18);
       return ethers.formatEther(balance);
     } catch (error) {
       console.error("Error getting native balance:", error);
@@ -191,6 +189,53 @@ export const executeSwapAction = createAsyncThunk(
     return {
       transactionHash: transaction.transactionHash,
     };
+  }
+);
+
+// Refresh all balances after swap
+export const refreshBalancesAfterSwap = createAsyncThunk(
+  "swap/refreshBalancesAfterSwap",
+  async ({
+    fromToken,
+    toToken,
+    account,
+  }: {
+    fromToken: TokenType | null;
+    toToken: TokenType | null;
+    account: string;
+  }) => {
+    if (!account) return { fromTokenBalance: "0", toTokenBalance: "0", nativeBalance: "0" };
+
+    try {
+      const swapManager = createSwapManager();
+      
+      // Get native balance
+      const nativeBalance = await swapManager.getTokenBalance(ZeroAddress, account, 18);
+      const nativeBalanceFormatted = ethers.formatEther(nativeBalance);
+      
+      // Get from token balance
+      let fromTokenBalance = "0";
+      if (fromToken && fromToken.address !== ZeroAddress) {
+        const balance = await swapManager.getTokenBalance(fromToken.address, account, fromToken.decimals);
+        fromTokenBalance = ethers.formatUnits(balance, fromToken.decimals);
+      }
+      
+      // Get to token balance
+      let toTokenBalance = "0";
+      if (toToken && toToken.address !== ZeroAddress) {
+        const balance = await swapManager.getTokenBalance(toToken.address, account, toToken.decimals);
+        toTokenBalance = ethers.formatUnits(balance, toToken.decimals);
+      }
+      
+      return {
+        fromTokenBalance,
+        toTokenBalance,
+        nativeBalance: nativeBalanceFormatted,
+      };
+    } catch (error) {
+      console.error("Error refreshing balances after swap:", error);
+      return { fromTokenBalance: "0", toTokenBalance: "0", nativeBalance: "0" };
+    }
   }
 );
 
@@ -308,11 +353,9 @@ export const swapSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // Handle getAllChains
     builder
       .addCase(getAllChains.pending, (state) => {})
       .addCase(getAllChains.fulfilled, (state, action) => {
-        // Move PulseChain to the first position if present
         const pulseIndex = action.payload.findIndex(
           (chain: any) => chain.symbol === "PLS"
         );
@@ -327,7 +370,6 @@ export const swapSlice = createSlice({
         console.error("Failed to get all chains:", action.error);
       });
 
-    // Handle getAvailableTokens
     builder
       .addCase(getAvailableTokensFromChain.pending, (state) => {})
       .addCase(getAvailableTokensFromChain.fulfilled, (state, action) => {
@@ -337,7 +379,6 @@ export const swapSlice = createSlice({
         console.error("Failed to get available tokens:", action.error);
       });
 
-    // Handle getQuote
     builder
       .addCase(getQuote.pending, (state) => {})
       .addCase(getQuote.fulfilled, (state, action) => {
@@ -368,7 +409,6 @@ export const swapSlice = createSlice({
         console.error("Failed to get quote:", action.error);
       });
 
-    // Handle approveToken
     builder
       .addCase(approveTokenAction.pending, (state) => {
         state.isApproving = true;
@@ -380,7 +420,6 @@ export const swapSlice = createSlice({
         state.isApproving = false;
       });
 
-    // Handle executeSwap
     builder
       .addCase(executeSwapAction.pending, (state) => {
         state.isSwapping = true;
@@ -392,19 +431,13 @@ export const swapSlice = createSlice({
         state.isApproving = false;
         state.quote = null;
         state.fromAmount = "";
-        state.fromToken = null;
-        state.toToken = null;
-        state.transactionHash = null;
       })
       .addCase(executeSwapAction.rejected, (state, action) => {
         state.isSwapping = false;
       });
 
-    // Handle getTokenPrice
     builder
-      .addCase(getTokenPrice.pending, (state) => {
-        // Handle loading state if needed
-      })
+      .addCase(getTokenPrice.pending, (state) => {})
       .addCase(getTokenPrice.fulfilled, (state, action) => {
         if (action.meta.arg.type === "from") {
           state.fromToken = {
@@ -423,7 +456,6 @@ export const swapSlice = createSlice({
         console.error("Failed to get token price:", action.error);
       });
 
-    // Handle checkTokenAllowance
     builder
       .addCase(checkTokenAllowance.pending, (state) => {
         state.isApproving = false;
@@ -435,22 +467,29 @@ export const swapSlice = createSlice({
         state.isApproved = false;
       });
 
-    // Handle getTokenBalance
     builder
-      .addCase(getTokenBalance.fulfilled, (state, action) => {
-        // This will be handled in the component based on which token is being checked
-      })
+      .addCase(getTokenBalance.fulfilled, (state, action) => {})
       .addCase(getTokenBalance.rejected, (state, action) => {
         console.error("Failed to get token balance:", action.error);
       });
 
-    // Handle getNativeBalance
     builder
       .addCase(getNativeBalance.fulfilled, (state, action) => {
         state.nativeBalance = action.payload;
       })
       .addCase(getNativeBalance.rejected, (state, action) => {
         console.error("Failed to get native balance:", action.error);
+      });
+
+    builder
+      .addCase(refreshBalancesAfterSwap.pending, (state) => {})
+      .addCase(refreshBalancesAfterSwap.fulfilled, (state, action) => {
+        state.fromTokenBalance = action.payload.fromTokenBalance;
+        state.toTokenBalance = action.payload.toTokenBalance;
+        state.nativeBalance = action.payload.nativeBalance;
+      })
+      .addCase(refreshBalancesAfterSwap.rejected, (state, action) => {
+        console.error("Failed to refresh balances after swap:", action.error);
       });
   },
 });

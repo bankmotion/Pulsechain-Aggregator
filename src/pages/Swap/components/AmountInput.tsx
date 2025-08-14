@@ -9,6 +9,8 @@ interface AmountInputProps {
   isOutput?: boolean;
   outputAmount?: number;
   isLoading?: boolean;
+  balance?: string;
+  balanceLoading?: boolean;
 }
 
 const AmountInput: React.FC<AmountInputProps> = ({
@@ -18,6 +20,8 @@ const AmountInput: React.FC<AmountInputProps> = ({
   isOutput = false,
   outputAmount = 0,
   isLoading = false,
+  balance = "0",
+  balanceLoading = false,
 }) => {
   const formatAmount = (value: string) => {
     if (!value) return "";
@@ -39,6 +43,15 @@ const AmountInput: React.FC<AmountInputProps> = ({
       onAmountChange(parts[0] + "." + parts.slice(1).join(""));
     } else {
       onAmountChange(value);
+    }
+  };
+
+  const handleMaxClick = () => {
+    if (isOutput) return; // Don't allow max click on output field
+    
+    // Use actual balance from props
+    if (balance && !balanceLoading && parseFloat(balance) > 0) {
+      onAmountChange(balance);
     }
   };
 
@@ -75,14 +88,25 @@ const AmountInput: React.FC<AmountInputProps> = ({
           )}
         </div>
       ) : (
-        <motion.input
-          whileFocus={{ scale: 1.02 }}
-          type="text"
-          placeholder="Enter an Amount"
-          value={getDisplayValue()}
-          onChange={handleInputChange}
-          className="bg-transparent text-right w-full outline-none text-lg sm:text-xl placeholder-gray-400 font-medium"
-        />
+        <div className="flex items-center justify-between w-full">
+          <motion.input
+            whileFocus={{ scale: 1.02 }}
+            type="text"
+            placeholder="Enter an Amount"
+            value={getDisplayValue()}
+            onChange={handleInputChange}
+            className="bg-transparent text-right w-full outline-none text-lg sm:text-xl placeholder-gray-400 font-medium"
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleMaxClick}
+            disabled={balanceLoading || parseFloat(balance || "0") <= 0}
+            className="px-3 py-1.5 text-xs bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] text-gray-300 rounded-lg hover:from-[#4a4f6a] hover:to-[#3a3f5a] hover:text-white transition-all duration-200 font-medium flex-shrink-0 ml-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            MAX
+          </motion.button>
+        </div>
       )}
       <div className="text-xs sm:text-sm text-gray-400">
         {isLoading ? (

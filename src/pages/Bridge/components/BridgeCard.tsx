@@ -4,6 +4,7 @@ import TokenSelector from "./TokenSelector";
 import AmountInput from "./AmountInput";
 import { BridgeToken, BridgeTransaction } from "../../../store/bridgeSlice";
 import useWallet from "../../../hooks/useWallet";
+import { addTokenToWallet } from "../../../utils/walletUtils";
 import { useBridgeTransactionPolling } from "../../../hooks/useBridgeTransactionPolling";
 import BridgeTransactionProgress from "./BridgeTransactionProgress";
 import { useAppDispatch } from "../../../store/hooks";
@@ -16,6 +17,7 @@ import {
 } from "../../../store/bridgeSlice";
 import AddToWalletButton from "../../../components/AddToWalletButton";
 import { TokenInfo } from "../../../utils/walletUtils";
+import { toast } from "react-toastify";
 
 interface BridgeCardProps {
   fromNetwork: "ETH" | "PLS";
@@ -117,8 +119,11 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
   const selectedTokenData = filteredTokens.find(
     (token) => token.symbol === selectedToken
   );
+
+  // Find the corresponding token using the new token pair structure
   const correspondingTokenData = tokens.find(
-    (token) => token.symbol === correspondingToken
+    (token) =>
+      token.symbol === correspondingToken && token.chainId === toChainId
   );
 
   // Clear selected token if it's not available in the current chain
@@ -335,6 +340,16 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
     return `Chain ID ${currentChainId}`;
   };
 
+  // Helper function to clean token symbols (remove network suffixes)
+  const cleanTokenSymbol = (symbol: string): string => {
+    if (symbol.includes(" from Ethereum")) {
+      return symbol.replace(" from Ethereum", "");
+    } else if (symbol.includes(" from PulseChain")) {
+      return symbol.replace(" from PulseChain", "");
+    }
+    return symbol;
+  };
+
   const getButtonText = () => {
     if (!account) return "Connect Wallet";
     if (isBridging) return "Bridging...";
@@ -501,78 +516,78 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
             tokens={filteredTokens}
             loading={loading}
           />
-          <AmountInput
-            value={amount}
-            onChange={onAmountChange}
-            selectedToken={selectedToken}
-            balance={balance}
-            balanceLoading={balanceLoading}
-          />
-        </div>
-
-        {/* Add to Wallet Buttons for Source Token */}
-        {selectedToken && (
-          <div className="flex items-center justify-between p-3 bg-[#2b2e4a]/50 rounded-lg border border-[#3a3f5a]/50">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 flex items-center justify-center">
-                <svg
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-white font-medium text-sm">
-                  Add {selectedToken} to your wallet
-                </p>
-                <p className="text-gray-400 text-xs">
-                  Click the button to add {selectedToken} to{" "}
-                  {getNetworkName(fromNetwork)}
-                </p>
-              </div>
-            </div>
-            <AddToWalletButton
-              token={{
-                address: selectedTokenData?.address || "",
-                symbol: selectedToken,
-                decimals: selectedTokenData?.decimals || 18,
-                chainId: fromChainId,
-                image: selectedTokenData?.logoURI,
+          <div className="flex items-center gap-2">
+            <AmountInput
+              value={amount}
+              onChange={onAmountChange}
+              selectedToken={selectedToken}
+              balance={balance}
+              balanceLoading={balanceLoading}
+              tokenAddress={selectedTokenData?.address}
+              onCopyAddress={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    selectedTokenData?.address || ""
+                  );
+                  toast.success("Token address copied to clipboard");
+                } catch (error) {
+                  console.error("Failed to copy address:", error);
+                }
               }}
-              variant="outline"
-              size="sm"
+              onAddToWallet={async () => {
+                if (!wallet || !selectedTokenData) return;
+
+                try {
+                  if (!isOnCorrectNetwork()) {
+                    await switchToChain(fromChainId);
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                  }
+
+                  const success = await addTokenToWallet(
+                    {
+                      address: selectedTokenData.address,
+                      symbol: cleanTokenSymbol(selectedToken),
+                      decimals: selectedTokenData.decimals,
+                      chainId: fromChainId,
+                      image: selectedTokenData.logoURI,
+                    },
+                    wallet
+                  );
+
+                  if (success) {
+                    // Show success feedback
+                  }
+                } catch (error) {
+                  console.error("Error adding token:", error);
+                }
+              }}
+              showButtons={!!(selectedToken && selectedTokenData)}
             />
           </div>
-        )}
+        </div>
 
         <div className="flex items-center justify-between text-sm">
           <span className="text-gray-400">Balance:</span>
-          <span className="text-white font-medium">
-            {balanceLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                <span>Loading...</span>
-              </div>
-            ) : balanceError ? (
-              <span className="text-red-400">Error</span>
-            ) : (
-              `${formatBalance(balance)} ${selectedToken}`
-            )}
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="text-white font-medium">
+              {balanceLoading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Loading...</span>
+                </div>
+              ) : balanceError ? (
+                <span className="text-red-400">Error</span>
+              ) : (
+                `${formatBalance(balance)} ${selectedToken}`
+              )}
+            </span>
+          </div>
         </div>
       </div>
 
       <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
         onClick={handleNetworkSwap}
         disabled={true}
         className="cursor-not-allowed -full flex items-center justify-center py-4 bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] hover:from-[#4a4f6a] hover:to-[#3a3f5a] rounded-xl border border-[#4a4f6a] hover:border-[#5a5f7a] transition-all duration-300 shadow-lg"
@@ -668,23 +683,6 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
               </div>
             </div>
 
-            {/* Add to Wallet Button for Destination Token */}
-            {correspondingToken && correspondingTokenData && (
-              <div className="flex items-center space-x-2">
-                <AddToWalletButton
-                  token={{
-                    address: correspondingTokenData.address,
-                    symbol: correspondingToken,
-                    decimals: correspondingTokenData.decimals,
-                    chainId: toChainId,
-                    image: correspondingTokenData.logoURI,
-                  }}
-                  variant="secondary"
-                  size="sm"
-                />
-              </div>
-            )}
-
             <div className="text-right">
               {estimateLoading ? (
                 <div className="flex items-center justify-center space-x-2">
@@ -695,13 +693,58 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
                 </div>
               ) : estimate ? (
                 <div className="text-right">
-                  <div className="text-white font-semibold text-lg">
-                    {estimate.estimatedAmount
-                      ? formatAmount(
-                          estimate.estimatedAmount,
-                          selectedTokenData?.decimals
-                        )
-                      : amount || "0.00"}
+                  <div className="flex items-center justify-end space-x-2">
+                    <span className="text-white font-semibold text-lg">
+                      {estimate.estimatedAmount
+                        ? formatAmount(
+                            estimate.estimatedAmount,
+                            selectedTokenData?.decimals
+                          )
+                        : amount || "0.00"}
+                    </span>
+
+                    {correspondingToken && correspondingTokenData && (
+                      <button
+                        onClick={async () => {
+                          if (!wallet) return;
+
+                          try {
+                            // Check if user is on the destination network
+                            if (currentChainId !== toChainId) {
+                              await switchToChain(toChainId);
+                              await new Promise((resolve) =>
+                                setTimeout(resolve, 1000)
+                              );
+                            }
+
+                            const success = await addTokenToWallet(
+                              {
+                                address: correspondingTokenData.address,
+                                symbol: cleanTokenSymbol(correspondingToken),
+                                decimals: correspondingTokenData.decimals,
+                                chainId: toChainId,
+                                image: correspondingTokenData.logoURI,
+                              },
+                              wallet
+                            );
+
+                            if (success) {
+                              // Show success feedback
+                            }
+                          } catch (error) {
+                            console.error("Error adding token:", error);
+                          }
+                        }}
+                        className="p-1.5 hover:bg-[#3a3f5a]/50 rounded-lg transition-colors duration-200"
+                        title="Add to MetaMask"
+                      >
+                        <img
+                          src="/metamask.png"
+                          alt="MetaMask"
+                          className="w-4 h-4"
+                        />
+                      </button>
+                    )}
                   </div>
                   <div className="text-gray-400 text-sm">
                     Fee:{" "}
@@ -722,8 +765,89 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
                 </div>
               ) : (
                 <div className="text-right">
-                  <div className="text-white font-semibold text-lg">
-                    {amount || "0.00"}
+                  <div className="flex items-center justify-end space-x-2">
+                    <span className="text-white font-semibold text-lg">
+                      {amount || "0.00"}
+                    </span>
+
+                    {correspondingToken && correspondingTokenData && (
+                      <>
+                        <button
+                          onClick={async () => {
+                            if (correspondingTokenData?.address) {
+                              try {
+                                await navigator.clipboard.writeText(
+                                  correspondingTokenData.address
+                                );
+                                toast && toast.success
+                                  ? toast.success(
+                                      "Token address copied to clipboard"
+                                    )
+                                  : null;
+                              } catch (error) {
+                                console.error("Failed to copy address:", error);
+                              }
+                            }
+                          }}
+                          className="p-1.5 hover:bg-[#3a3f5a]/50 rounded-lg transition-colors duration-200"
+                          title="Copy token address"
+                        >
+                          <svg
+                            className="w-4 h-4 text-gray-300"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!wallet) return;
+
+                            try {
+                              // Check if user is on the destination network
+                              if (currentChainId !== toChainId) {
+                                await switchToChain(toChainId);
+                                await new Promise((resolve) =>
+                                  setTimeout(resolve, 1000)
+                                );
+                              }
+
+                              const success = await addTokenToWallet(
+                                {
+                                  address: correspondingTokenData.address,
+                                  symbol: cleanTokenSymbol(correspondingToken),
+                                  decimals: correspondingTokenData.decimals,
+                                  chainId: toChainId,
+                                  image: correspondingTokenData.logoURI,
+                                },
+                                wallet
+                              );
+
+                              if (success) {
+                                // Show success feedback
+                              }
+                            } catch (error) {
+                              console.error("Error adding token:", error);
+                            }
+                          }}
+                          className="p-1.5 hover:bg-[#3a3f5a]/50 rounded-lg transition-colors duration-200"
+                          title="Add to MetaMask"
+                        >
+                          <img
+                            src="/metamask.png"
+                            alt="MetaMask"
+                            className="w-4 h-4"
+                          />
+                        </button>
+                      </>
+                    )}
                   </div>
                   <div className="text-gray-400 text-sm">≈ $0.00</div>
                 </div>
