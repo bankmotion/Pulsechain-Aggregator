@@ -4,9 +4,24 @@ import { useState, useEffect } from "react";
 import CustomConnectButton from "../components/CustomConnectButton";
 import useWallet from "../hooks/useWallet";
 import { toast } from "react-toastify";
-import { useAppDispatch, useReferralCode, useReferralLoading, useReferralAddress } from "../store/hooks";
-import { fetchReferralCode, fetchReferralAddress, clearReferralCode, clearReferralAddress } from "../store/referralSlice";
-import { extractAndSaveReferralCode, getStoredReferralCode, hasReferralCodeInUrl } from "../utils/referralUtils";
+import {
+  useAppDispatch,
+  useReferralCode,
+  useReferralLoading,
+  useReferralAddress,
+} from "../store/hooks";
+import {
+  fetchReferralCode,
+  fetchReferralAddress,
+  clearReferralCode,
+  clearReferralAddress,
+} from "../store/referralSlice";
+import {
+  extractAndSaveReferralCode,
+  getStoredReferralCode,
+  hasReferralCodeInUrl,
+  isSelfReferral,
+} from "../utils/referralUtils";
 
 const Header = () => {
   const { account, connectWallet, disconnectWallet } = useWallet();
@@ -24,7 +39,7 @@ const Header = () => {
     );
   };
 
-    // Handle referral codes from URL and localStorage
+  // Handle referral codes from URL and localStorage
   useEffect(() => {
     // Check if there's a referral code in the URL
     if (hasReferralCodeInUrl()) {
@@ -33,7 +48,7 @@ const Header = () => {
         // Check if this is a new/different referral code
         const existingCode = getStoredReferralCode();
         const isNewCode = existingCode && existingCode !== extractedCode;
-        
+
         // Fetch referral address data for the extracted code
         dispatch(fetchReferralAddress(extractedCode));
       }
@@ -62,13 +77,24 @@ const Header = () => {
     };
   }, [account, dispatch]);
 
+  // Log if self-referral is detected
+  useEffect(() => {
+    if (
+      account &&
+      referralAddressData &&
+      isSelfReferral(account, referralAddressData.address)
+    ) {
+      console.log("Self-referral detected in header, hiding referral info");
+    }
+  }, [account, referralAddressData]);
+
   const handleReferralCodeCopy = async () => {
     try {
       const referralCode = referralCodeData?.referralCode;
       if (referralCode) {
         const mainDomain = window.location.origin;
         const referralUrl = `${mainDomain}?code=${referralCode}`;
-        
+
         await navigator.clipboard.writeText(referralUrl);
         toast.success("Referral link copied to clipboard");
       } else {
@@ -164,7 +190,6 @@ const Header = () => {
                 )}
               </motion.button>
             </Link>
-
           </div>
         </div>
 
@@ -207,43 +232,52 @@ const Header = () => {
                     <div className="mb-2">
                       <button
                         onClick={handleReferralCodeCopy}
-                        disabled={referralLoading || !referralCodeData?.referralCode}
+                        disabled={
+                          referralLoading || !referralCodeData?.referralCode
+                        }
                         className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-700/50 rounded-lg transition-colors duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <div className="flex items-center space-x-3">
                           <div>
                             <p className="text-sm text-white font-medium">
-                              {referralLoading ? "Loading..." : "Copy Referral Code"}
+                              {referralLoading
+                                ? "Loading..."
+                                : "Copy Referral Code"}
                             </p>
                             <p className="text-xs text-slate-400">
-                              {referralCodeData?.referralCode 
-                                ? `Code: ${referralCodeData.referralCode}` 
-                                : referralLoading 
-                                  ? "Fetching code..." 
-                                  : "No code available"}
+                              {referralCodeData?.referralCode
+                                ? `Code: ${referralCodeData.referralCode}`
+                                : referralLoading
+                                ? "Fetching code..."
+                                : "No code available"}
                             </p>
                           </div>
                         </div>
                       </button>
                     </div>
 
-                    {/* Referral Address Info - Show if user was referred */}
-                    {referralAddressData && (
-                      <div className="mb-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-emerald-400 text-sm">🎯</span>
-                          <div>
-                            <p className="text-xs text-emerald-400 font-medium">Referred by</p>
-                            <p className="text-xs text-slate-300 font-mono">
-                              {referralAddressData.address.slice(0, 6)}...{referralAddressData.address.slice(-4)}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              Code: {referralAddressData.referralCode}
-                            </p>
+                    {/* Referral Address Info - Show if user was referred (but not self-referral) */}
+                    {referralAddressData &&
+                      account &&
+                      !isSelfReferral(account, referralAddressData.address) && (
+                        <div className="mb-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-emerald-400 text-sm">🎯</span>
+                            <div>
+                              <p className="text-xs text-emerald-400 font-medium">
+                                Referred by
+                              </p>
+                              <p className="text-xs text-slate-300 font-mono">
+                                {referralAddressData.address.slice(0, 6)}...
+                                {referralAddressData.address.slice(-4)}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                Code: {referralAddressData.referralCode}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
                     {/* Disconnect Button */}
                     <button

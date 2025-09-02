@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { QuoteType, TokenType } from "../types/Swap";
 import { ethers } from "ethers";
+import { isSelfReferral } from "../utils/referralUtils";
 import { ZeroAddress, SwapManagerAddress, BackendURL } from "../const/swap";
 import {
   approveToken,
@@ -190,8 +191,18 @@ export const executeSwapAction = createAsyncThunk(
   }) => {
     // Get referral address from Redux store
     const state = store.getState();
-    const referrerAddress =
-      state.referral.referralAddress?.address || undefined;
+    const referralAddress = state.referral.referralAddress?.address;
+    
+    // Only use referral address if it's not a self-referral
+    const referrerAddress = referralAddress && account && 
+      !isSelfReferral(account, referralAddress)
+      ? referralAddress 
+      : undefined;
+
+    // Log if self-referral is detected
+    if (referralAddress && account && isSelfReferral(account, referralAddress)) {
+      console.log("Self-referral detected, skipping referral address in swap");
+    }
 
     const transaction = await executeSwap({
       quote,

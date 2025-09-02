@@ -37,6 +37,20 @@ export const extractAndSaveReferralCode = (): string | null => {
 };
 
 /**
+ * Check if a referral is a self-referral (user referring themselves)
+ * @param userAddress - The current user's address
+ * @param referralAddress - The referral address to check against
+ * @returns True if it's a self-referral, false otherwise
+ * 
+ * This prevents users from referring themselves, which would be invalid
+ * and could potentially cause issues with the referral system.
+ */
+export const isSelfReferral = (userAddress: string, referralAddress: string): boolean => {
+  if (!userAddress || !referralAddress) return false;
+  return userAddress.toLowerCase() === referralAddress.toLowerCase();
+};
+
+/**
  * Get referral code from localStorage
  * @returns The stored referral code or null if not found
  */

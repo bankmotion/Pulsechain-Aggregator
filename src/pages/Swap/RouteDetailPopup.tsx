@@ -26,7 +26,7 @@ const RouteDetailsPopup = () => {
           </div>
           
           {/* Route Steps */}
-          <div className="flex-1 flex flex-col sm:flex-row items-center justify-between gap-2 w-full">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2  justify-center">
             {route.subroutes.map((subroute, subIndex) => (
               <div key={subIndex} className="flex flex-col sm:flex-row items-center gap-2 w-full">
                 <div className="flex flex-col items-center bg-[#23263b] rounded-xl px-3 sm:px-4 py-2 min-w-[160px] sm:min-w-[200px] w-full sm:w-auto">

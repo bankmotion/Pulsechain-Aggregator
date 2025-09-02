@@ -87,7 +87,6 @@ const QuotePanel = () => {
           </div>
           <div className="flex justify-between items-center pt-2 border-t border-white/10 mt-2">
             <span className="text-xs text-white/40">
-              Piteos API v{apiVersion}
             </span>
             <div
               className="relative flex items-center cursor-pointer"
