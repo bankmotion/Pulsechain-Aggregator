@@ -7,6 +7,7 @@ import { PulseChainConfig } from "../config/chainConfig";
 import { SwapManagerAddress } from "../const/swap";
 import { BigNumberish, ethers, ZeroAddress } from "ethers";
 
+
 export interface ApprovalParams {
   tokenAddress: string;
   spenderAddress: string;
@@ -20,6 +21,12 @@ export interface SwapParams {
   value: string;
   account: string;
   fromToken: TokenType;
+  referrerAddress?: string; // Optional referrer address from Redux state
+}
+
+export interface ReferralClaimParams {
+  tokens: string[];
+  account: string;
 }
 
 export const getWeb3 = () =>
@@ -215,12 +222,15 @@ export const approveToken = async (params: ApprovalParams): Promise<any> => {
  */
 export const executeSwap = async (params: SwapParams): Promise<any> => {
   try {
-    const { quote, value, account, fromToken } = params;
+    const { quote, value, account, fromToken, referrerAddress } = params;
     const web3 = getProvider(); // Use wallet provider for transactions
     const swapManagerContract = new web3.eth.Contract(
       SwapManagerABI as unknown as AbiItem[],
       SwapManagerAddress
     );
+
+    // Use referrer address from Redux state, fallback to zero address if not provided
+    const referrerCode = referrerAddress || "0x0000000000000000000000000000000000000000";
 
     // Prepare transaction parameters
     const txParams: any = {
@@ -232,9 +242,11 @@ export const executeSwap = async (params: SwapParams): Promise<any> => {
       txParams.value = value;
     }
 
-    // Execute swap transaction
+    console.log("referrerCode", referrerCode);
+
+    // Execute swap transaction with referral code
     const transaction = await swapManagerContract.methods
-      .executeSwap(quote.calldata)
+      .executeSwap(quote.calldata, referrerCode)
       .send(txParams);
 
     await waitForTransaction(transaction.transactionHash, 1);
@@ -243,6 +255,32 @@ export const executeSwap = async (params: SwapParams): Promise<any> => {
   } catch (error) {
     console.error("Swap execution failed:", error);
     throw new Error("Swap transaction failed");
+  }
+};
+
+/**
+ * Withdraw referral earnings for specified tokens
+ */
+export const withdrawReferralEarnings = async (params: ReferralClaimParams): Promise<any> => {
+  try {
+    const { tokens, account } = params;
+    const web3 = getProvider(); // Use wallet provider for transactions
+    const swapManagerContract = new web3.eth.Contract(
+      SwapManagerABI as unknown as AbiItem[],
+      SwapManagerAddress
+    );
+
+    // Execute referral earnings withdrawal
+    const transaction = await swapManagerContract.methods
+      .withdrawReferralEarnings(tokens)
+      .send({ from: account });
+
+    await waitForTransaction(transaction.transactionHash, 1);
+
+    return transaction;
+  } catch (error) {
+    console.error("Referral earnings withdrawal failed:", error);
+    throw new Error("Referral earnings withdrawal failed");
   }
 };
 
@@ -329,6 +367,8 @@ export const createSwapManager = () => {
     approveToken: (params: ApprovalParams) => approveToken(params),
 
     executeSwap: (params: SwapParams) => executeSwap(params),
+
+    withdrawReferralEarnings: (params: ReferralClaimParams) => withdrawReferralEarnings(params),
 
     // Utility functions
     getTransactionReceipt: (txHash: string) => getTransactionReceipt(txHash),

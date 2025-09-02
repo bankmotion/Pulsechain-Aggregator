@@ -8,4 +8,13 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 export const useActivityState = () => useSelector((state: RootState) => state.activity);
 export const useTransactions = () => useSelector((state: RootState) => state.activity.transactions);
 export const useActivityLoading = () => useSelector((state: RootState) => state.activity.loading);
-export const useActivityError = () => useSelector((state: RootState) => state.activity.error); 
+export const useActivityError = () => useSelector((state: RootState) => state.activity.error);
+
+// Referral selectors
+export const useReferralState = () => useSelector((state: RootState) => state.referral);
+export const useReferralCode = () => useSelector((state: RootState) => state.referral.referralCode);
+export const useReferralAddress = () => useSelector((state: RootState) => state.referral.referralAddress);
+export const useReferralFees = () => useSelector((state: RootState) => state.referral.referralFees);
+export const useReferralLoading = () => useSelector((state: RootState) => state.referral.loading);
+export const useReferralError = () => useSelector((state: RootState) => state.referral.error);
+export const useReferralClaiming = () => useSelector((state: RootState) => state.referral.claiming); 

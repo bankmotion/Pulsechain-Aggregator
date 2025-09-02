@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { QuoteType, TokenType } from "../types/Swap";
 import { ethers } from "ethers";
-import { ZeroAddress, SwapManagerAddress } from "../const/swap";
+import { ZeroAddress, SwapManagerAddress, BackendURL } from "../const/swap";
 import {
   approveToken,
   executeSwap,
@@ -10,6 +10,7 @@ import {
   createSwapManager,
 } from "../contracts/SwapManager";
 import { config } from "process";
+import { store } from "./store";
 
 interface SwapState {
   allChains: TokenType[];
@@ -67,8 +68,12 @@ export const getTokenBalance = createAsyncThunk(
 
     try {
       const swapManager = createSwapManager();
-      const balance = await swapManager.getTokenBalance(tokenAddress, userAddress, decimals);
-      
+      const balance = await swapManager.getTokenBalance(
+        tokenAddress,
+        userAddress,
+        decimals
+      );
+
       // Convert from wei to human readable format
       if (tokenAddress === ZeroAddress) {
         // Native token balance is already in wei, convert to ether
@@ -92,7 +97,11 @@ export const getNativeBalance = createAsyncThunk(
 
     try {
       const swapManager = createSwapManager();
-      const balance = await swapManager.getTokenBalance(ZeroAddress, userAddress, 18);
+      const balance = await swapManager.getTokenBalance(
+        ZeroAddress,
+        userAddress,
+        18
+      );
       return ethers.formatEther(balance);
     } catch (error) {
       console.error("Error getting native balance:", error);
@@ -179,11 +188,17 @@ export const executeSwapAction = createAsyncThunk(
     account: string;
     fromToken: TokenType;
   }) => {
+    // Get referral address from Redux store
+    const state = store.getState();
+    const referrerAddress =
+      state.referral.referralAddress?.address || undefined;
+
     const transaction = await executeSwap({
       quote,
       value: value,
       account,
       fromToken,
+      referrerAddress,
     });
 
     return {
@@ -204,29 +219,42 @@ export const refreshBalancesAfterSwap = createAsyncThunk(
     toToken: TokenType | null;
     account: string;
   }) => {
-    if (!account) return { fromTokenBalance: "0", toTokenBalance: "0", nativeBalance: "0" };
+    if (!account)
+      return { fromTokenBalance: "0", toTokenBalance: "0", nativeBalance: "0" };
 
     try {
       const swapManager = createSwapManager();
-      
+
       // Get native balance
-      const nativeBalance = await swapManager.getTokenBalance(ZeroAddress, account, 18);
+      const nativeBalance = await swapManager.getTokenBalance(
+        ZeroAddress,
+        account,
+        18
+      );
       const nativeBalanceFormatted = ethers.formatEther(nativeBalance);
-      
+
       // Get from token balance
       let fromTokenBalance = "0";
       if (fromToken && fromToken.address !== ZeroAddress) {
-        const balance = await swapManager.getTokenBalance(fromToken.address, account, fromToken.decimals);
+        const balance = await swapManager.getTokenBalance(
+          fromToken.address,
+          account,
+          fromToken.decimals
+        );
         fromTokenBalance = ethers.formatUnits(balance, fromToken.decimals);
       }
-      
+
       // Get to token balance
       let toTokenBalance = "0";
       if (toToken && toToken.address !== ZeroAddress) {
-        const balance = await swapManager.getTokenBalance(toToken.address, account, toToken.decimals);
+        const balance = await swapManager.getTokenBalance(
+          toToken.address,
+          account,
+          toToken.decimals
+        );
         toTokenBalance = ethers.formatUnits(balance, toToken.decimals);
       }
-      
+
       return {
         fromTokenBalance,
         toTokenBalance,
@@ -293,7 +321,7 @@ export const getQuote = createAsyncThunk(
     fromDecimal: number;
   }) => {
     const response = await fetch(
-      `https://pt-quote-api.vercel.app/quote?tokenInAddress=${tokenInAddress}&tokenOutAddress=${tokenOutAddress}&amount=${ethers.parseUnits(
+      `${BackendURL}quote?tokenInAddress=${tokenInAddress}&tokenOutAddress=${tokenOutAddress}&amount=${ethers.parseUnits(
         amount.toString(),
         fromDecimal
       )}&allowedSlippage=${allowedSlippage}&fromDecimal=${fromDecimal}`

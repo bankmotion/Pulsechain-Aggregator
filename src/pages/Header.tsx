@@ -1,17 +1,83 @@
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import CustomConnectButton from "../components/CustomConnectButton";
 import useWallet from "../hooks/useWallet";
+import { toast } from "react-toastify";
+import { useAppDispatch, useReferralCode, useReferralLoading, useReferralAddress } from "../store/hooks";
+import { fetchReferralCode, fetchReferralAddress, clearReferralCode, clearReferralAddress } from "../store/referralSlice";
+import { extractAndSaveReferralCode, getStoredReferralCode, hasReferralCodeInUrl } from "../utils/referralUtils";
 
 const Header = () => {
   const { account, connectWallet, disconnectWallet } = useWallet();
   const location = useLocation();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dispatch = useAppDispatch();
+  const referralCodeData = useReferralCode();
+  const referralLoading = useReferralLoading();
+  const referralAddressData = useReferralAddress();
 
   const isActive = (path: string) => {
     return (
       location.pathname === path ||
       (path === "/swap" && location.pathname === "/")
     );
+  };
+
+    // Handle referral codes from URL and localStorage
+  useEffect(() => {
+    // Check if there's a referral code in the URL
+    if (hasReferralCodeInUrl()) {
+      const extractedCode = extractAndSaveReferralCode();
+      if (extractedCode) {
+        // Check if this is a new/different referral code
+        const existingCode = getStoredReferralCode();
+        const isNewCode = existingCode && existingCode !== extractedCode;
+        
+        // Fetch referral address data for the extracted code
+        dispatch(fetchReferralAddress(extractedCode));
+      }
+    } else {
+      // Check localStorage for existing referral code
+      const storedCode = getStoredReferralCode();
+      if (storedCode && !referralAddressData) {
+        // Fetch referral address data for the stored code
+        dispatch(fetchReferralAddress(storedCode));
+      }
+    }
+  }, [dispatch, referralAddressData]);
+
+  // Fetch referral code when account changes
+  useEffect(() => {
+    if (account) {
+      dispatch(fetchReferralCode(account));
+    } else {
+      dispatch(clearReferralCode());
+    }
+
+    // Cleanup on unmount
+    return () => {
+      dispatch(clearReferralCode());
+      // Don't clear referral address - keep it in localStorage forever
+    };
+  }, [account, dispatch]);
+
+  const handleReferralCodeCopy = async () => {
+    try {
+      const referralCode = referralCodeData?.referralCode;
+      if (referralCode) {
+        const mainDomain = window.location.origin;
+        const referralUrl = `${mainDomain}?code=${referralCode}`;
+        
+        await navigator.clipboard.writeText(referralUrl);
+        toast.success("Referral link copied to clipboard");
+      } else {
+        toast.error("Referral code not available");
+      }
+    } catch (error) {
+      console.error("Failed to copy referral code:", error);
+      toast.error("Failed to copy referral link");
+    }
   };
 
   return (
@@ -98,6 +164,7 @@ const Header = () => {
                 )}
               </motion.button>
             </Link>
+
           </div>
         </div>
 
@@ -105,22 +172,102 @@ const Header = () => {
         <div className="flex items-center space-x-3 sm:space-x-4">
           {/* Wallet Connection */}
           {account ? (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={disconnectWallet}
-              className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 px-4 sm:px-6 py-2.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500/50 shadow-lg shadow-emerald-500/10 transition-all duration-300 group"
-            >
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
-                <span className="text-emerald-400 font-semibold text-sm sm:text-base">
-                  {account.slice(0, 4)}...{account.slice(-4)}
-                </span>
-                <span className="hidden sm:inline text-emerald-400/70 group-hover:text-emerald-400 transition-colors text-lg">
-                  ↓
-                </span>
-              </div>
-            </motion.button>
+            <div className="relative">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onMouseEnter={() => setShowDropdown(true)}
+                onMouseLeave={() => setShowDropdown(false)}
+                className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 px-4 sm:px-6 py-2.5 rounded-xl border border-emerald-500/30 hover:border-emerald-500/50 shadow-lg shadow-emerald-500/10 transition-all duration-300 group"
+              >
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-400 rounded-full animate-pulse shadow-lg shadow-emerald-400/50"></div>
+                  <span className="text-emerald-400 font-semibold text-sm sm:text-base">
+                    {account.slice(0, 4)}...{account.slice(-4)}
+                  </span>
+                  <span className="hidden sm:inline text-emerald-400/70 group-hover:text-emerald-400 transition-colors text-lg">
+                    ↓
+                  </span>
+                </div>
+              </motion.button>
+
+              {/* Dropdown Menu */}
+              {showDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onMouseEnter={() => setShowDropdown(true)}
+                  onMouseLeave={() => setShowDropdown(false)}
+                  className="absolute right-0 top-full w-64 bg-slate-800/95 backdrop-blur-md border border-slate-700/50 rounded-xl shadow-xl shadow-black/20 z-50"
+                >
+                  <div className="p-3">
+                    {/* Referral Code Section */}
+                    <div className="mb-2">
+                      <button
+                        onClick={handleReferralCodeCopy}
+                        disabled={referralLoading || !referralCodeData?.referralCode}
+                        className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-slate-700/50 rounded-lg transition-colors duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div>
+                            <p className="text-sm text-white font-medium">
+                              {referralLoading ? "Loading..." : "Copy Referral Code"}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {referralCodeData?.referralCode 
+                                ? `Code: ${referralCodeData.referralCode}` 
+                                : referralLoading 
+                                  ? "Fetching code..." 
+                                  : "No code available"}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Referral Address Info - Show if user was referred */}
+                    {referralAddressData && (
+                      <div className="mb-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-emerald-400 text-sm">🎯</span>
+                          <div>
+                            <p className="text-xs text-emerald-400 font-medium">Referred by</p>
+                            <p className="text-xs text-slate-300 font-mono">
+                              {referralAddressData.address.slice(0, 6)}...{referralAddressData.address.slice(-4)}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              Code: {referralAddressData.referralCode}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Disconnect Button */}
+                    <button
+                      onClick={() => {
+                        disconnectWallet();
+                        // Don't clear referral address - keep it in localStorage forever
+                      }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-red-500/20 hover:border-red-500/30 border border-transparent rounded-lg transition-all duration-200 group"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div>
+                          <p className="text-sm text-red-400 font-medium">
+                            Disconnect
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Sign out wallet
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
           ) : (
             <CustomConnectButton />
           )}

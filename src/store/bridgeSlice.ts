@@ -10,6 +10,7 @@ import {
   handleTokenApproval,
   initializeBridgeManager,
 } from "../contracts/BridgeContract";
+import { BackendURL } from "../const/swap";
 
 export interface BridgeToken {
   name: string;
@@ -120,10 +121,10 @@ export const fetchTokenPairs = createAsyncThunk(
       // Fetch tokens for both chains simultaneously
       const [ethResponse, plsResponse] = await Promise.all([
         fetch(
-          `https://pt-quote-api.vercel.app/exchange/omnibridge/currencies?chainId=1&verified=true`
+          `${BackendURL}exchange/omnibridge/currencies?chainId=1&verified=true`
         ),
         fetch(
-          `https://pt-quote-api.vercel.app/exchange/omnibridge/currencies?chainId=369&verified=true`
+          `${BackendURL}exchange/omnibridge/currencies?chainId=369&verified=true`
         ),
       ]);
 
@@ -151,8 +152,11 @@ export const fetchTokenPairs = createAsyncThunk(
 
       const tokenPairs: TokenPair[] = [];
 
-      const findTokenBySymbol = (tokens: BridgeToken[], symbol: string): BridgeToken | undefined => {
-        return tokens.find(token => token.symbol === symbol);
+      const findTokenBySymbol = (
+        tokens: BridgeToken[],
+        symbol: string
+      ): BridgeToken | undefined => {
+        return tokens.find((token) => token.symbol === symbol);
       };
 
       // Ethereum (from) -> PulseChain (to) mappings
@@ -187,11 +191,11 @@ export const fetchTokenPairs = createAsyncThunk(
         const plsToken = findTokenBySymbol(pulsechainTokens, mapping.plsSymbol);
 
         if (ethToken && plsToken) {
-        tokenPairs.push({
+          tokenPairs.push({
             from: ethToken,
             to: plsToken,
-        });
-      }
+          });
+        }
       });
 
       // Create pairs for PulseChain -> Ethereum
@@ -235,7 +239,7 @@ export const fetchTokens = createAsyncThunk(
   }) => {
     try {
       const response = await fetch(
-        `https://pt-quote-api.vercel.app/exchange/omnibridge/currencies?chainId=${chainId}&verified=${verified}`
+        `${BackendURL}exchange/omnibridge/currencies?chainId=${chainId}&verified=${verified}`
       );
 
       if (!response.ok) {
@@ -378,7 +382,7 @@ export const fetchBridgeEstimate = createAsyncThunk(
   }) => {
     try {
       const response = await fetch(
-        `https://pt-quote-api.vercel.app/exchange/omnibridge/estimate?tokenAddress=${tokenAddress}&networkId=${networkId}&amount=${amount}`
+        `${BackendURL}exchange/omnibridge/estimate?tokenAddress=${tokenAddress}&networkId=${networkId}&amount=${amount}`
       );
 
       if (!response.ok) {
@@ -427,7 +431,7 @@ export const submitBridgeTransaction = createAsyncThunk(
   }) => {
     try {
       const response = await fetch(
-        "https://pt-quote-api.vercel.app/exchange/omnibridge/transaction",
+        `${BackendURL}exchange/omnibridge/transaction`,
         {
           method: "POST",
           headers: {
@@ -465,7 +469,7 @@ export const pollBridgeTransactionStatus = createAsyncThunk(
   async (messageId: string) => {
     try {
       const response = await fetch(
-        `https://pt-quote-api.vercel.app/exchange/omnibridge/transaction/${messageId}`
+        `${BackendURL}exchange/omnibridge/transaction/${messageId}`
       );
 
       if (!response.ok) {

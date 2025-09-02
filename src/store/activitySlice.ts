@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { BridgeTransaction } from "./bridgeSlice";
+import { BackendURL } from "../const/swap";
 
 interface ActivityState {
   transactions: BridgeTransaction[];
@@ -17,52 +18,52 @@ const initialState: ActivityState = {
 
 // Mock data for testing purposes
 const getMockTransactions = (userAddress: string) => [
-    {
-      id: "mock-1",
-      messageId:
-        "0x00050000809822368a3e57b54d6426d420b1294d3262f4f50000000000095a66",
-      userAddress: userAddress,
-      sourceChainId: 1,
-      targetChainId: 369,
-      sourceTxHash:
-        "0x91618ad9726a0b48bd48ae2cec12832b4488a4f79afe0e3f089dafc29e0bea72",
-      targetTxHash:
-        "0x7648862b83e5ee4748b7515ed6821ee64961bfce301a1fd30e24781fcd6152c1",
-      tokenAddress: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
-      tokenSymbol: "WETH",
-      tokenDecimals: 18,
-      amount: "18100000000000000",
-      status: "executed",
+  {
+    id: "mock-1",
+    messageId:
+      "0x00050000809822368a3e57b54d6426d420b1294d3262f4f50000000000095a66",
+    userAddress: userAddress,
+    sourceChainId: 1,
+    targetChainId: 369,
+    sourceTxHash:
+      "0x91618ad9726a0b48bd48ae2cec12832b4488a4f79afe0e3f089dafc29e0bea72",
+    targetTxHash:
+      "0x7648862b83e5ee4748b7515ed6821ee64961bfce301a1fd30e24781fcd6152c1",
+    tokenAddress: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    tokenSymbol: "WETH",
+    tokenDecimals: 18,
+    amount: "18100000000000000",
+    status: "executed",
     sourceTimestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     targetTimestamp: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      encodedData: null,
+    encodedData: null,
     createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-      humanReadableAmount: "0.0181",
-    },
-    {
-      id: "mock-2",
-      messageId:
-        "0x00050000809822368a3e57b54d6426d420b1294d3262f4f50000000000095a67",
-      userAddress: userAddress,
-      sourceChainId: 369,
-      targetChainId: 1,
-      sourceTxHash:
-        "0x91618ad9726a0b48bd48ae2cec12832b4488a4f79afe0e3f089dafc29e0bea73",
-      targetTxHash: null,
-      tokenAddress: "0x0000000000000000000000000000000000000000",
-      tokenSymbol: "PLS",
-      tokenDecimals: 18,
-      amount: "1000000000000000000",
-      status: "pending",
+    humanReadableAmount: "0.0181",
+  },
+  {
+    id: "mock-2",
+    messageId:
+      "0x00050000809822368a3e57b54d6426d420b1294d3262f4f50000000000095a67",
+    userAddress: userAddress,
+    sourceChainId: 369,
+    targetChainId: 1,
+    sourceTxHash:
+      "0x91618ad9726a0b48bd48ae2cec12832b4488a4f79afe0e3f089dafc29e0bea73",
+    targetTxHash: null,
+    tokenAddress: "0x0000000000000000000000000000000000000000",
+    tokenSymbol: "PLS",
+    tokenDecimals: 18,
+    amount: "1000000000000000000",
+    status: "pending",
     sourceTimestamp: new Date().toISOString(),
-      targetTimestamp: null,
-      encodedData: null,
+    targetTimestamp: null,
+    encodedData: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-      humanReadableAmount: "1.0",
-    },
-  ];
+    humanReadableAmount: "1.0",
+  },
+];
 
 // Fetch user transactions
 export const fetchUserTransactions = createAsyncThunk(
@@ -70,7 +71,7 @@ export const fetchUserTransactions = createAsyncThunk(
   async (userAddress: string) => {
     try {
       const response = await fetch(
-        `https://pt-quote-api.vercel.app/exchange/omnibridge/transactions?userAddress=${userAddress}&limit=50&offset=0`
+        `${BackendURL}exchange/omnibridge/transactions?userAddress=${userAddress}&limit=50&offset=0`
       );
 
       if (!response.ok) {
@@ -115,10 +116,8 @@ export const fetchTransactionStatus = createAsyncThunk(
   "activity/fetchTransactionStatus",
   async (messageId: string) => {
     try {
-      const API_BASE_URL = "https://pt-quote-api.vercel.app";
-
       const response = await fetch(
-        `${API_BASE_URL}/exchange/omnibridge/transaction/${messageId}`
+        `${BackendURL}exchange/omnibridge/transaction/${messageId}`
       );
 
       if (!response.ok) {
