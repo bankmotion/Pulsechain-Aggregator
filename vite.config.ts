@@ -7,6 +7,7 @@ export default defineConfig({
     open: true,
     host: '0.0.0.0',
   },
+  // @ts-ignore
   test: {
     globals: true,
     environment: 'jsdom',
@@ -14,7 +15,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'build',
-    sourcemap: true,
+    sourcemap: process.env.VITE_SOURCEMAP === 'true',
   },
   resolve: {
     alias: {
