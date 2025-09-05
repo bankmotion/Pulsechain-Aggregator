@@ -327,7 +327,7 @@ const Swap: React.FC = () => {
                   ? "PLS"
                   : toToken.address,
               amount: Number(fromAmount),
-              allowedSlippage: 0.5,
+              allowedSlippage: slippage,
               fromDecimal: fromToken.decimals,
             })
           );
