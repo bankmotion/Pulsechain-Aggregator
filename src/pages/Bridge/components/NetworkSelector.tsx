@@ -119,7 +119,6 @@ const NetworkSelector: React.FC<NetworkSelectorProps> = ({
         </div>
       </div>
 
-      {/* Network Info */}
       <div className="mt-6 p-4 bg-[#2b2e4a] rounded-xl border border-[#3a3f5a]">
         <h4 className="text-gray-300 font-medium mb-2 text-sm">Bridge Information</h4>
         <div className="space-y-2 text-xs text-gray-400">
@@ -132,8 +131,8 @@ const NetworkSelector: React.FC<NetworkSelectorProps> = ({
             <span className="text-gray-300">0.1%</span>
           </div>
           <div className="flex justify-between">
-            <span>Minimum Amount:</span>
-            <span className="text-gray-300">0.001 {fromNetwork}</span>
+            <span>Security:</span>
+            <span className="text-green-400">Official Bridge</span>
           </div>
         </div>
       </div>

@@ -48,6 +48,9 @@ interface BridgeCardProps {
   bridgeTransaction: BridgeTransaction | null;
   bridgeTransactionLoading: boolean;
   bridgeTransactionError: string | null;
+  onApprove: () => void;
+  onSwitchNetwork: () => void;
+  onClearTransaction: () => void;
 }
 
 const BridgeCard: React.FC<BridgeCardProps> = ({
@@ -79,6 +82,9 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
   bridgeTransaction,
   bridgeTransactionLoading,
   bridgeTransactionError,
+  onApprove,
+  onSwitchNetwork,
+  onClearTransaction,
 }) => {
   const dispatch = useAppDispatch();
   const { account, connectWallet, switchToChain, wallet } = useWallet();
@@ -524,6 +530,8 @@ const BridgeCard: React.FC<BridgeCardProps> = ({
               balance={balance}
               balanceLoading={balanceLoading}
               tokenAddress={selectedTokenData?.address}
+              fromChainId={fromChainId}
+              selectedTokenData={selectedTokenData}
               onCopyAddress={async () => {
                 try {
                   await navigator.clipboard.writeText(
