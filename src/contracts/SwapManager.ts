@@ -7,7 +7,6 @@ import { PulseChainConfig } from "../config/chainConfig";
 import { SwapManagerAddress } from "../const/swap";
 import { BigNumberish, ethers, ZeroAddress } from "ethers";
 
-
 export interface ApprovalParams {
   tokenAddress: string;
   spenderAddress: string;
@@ -203,12 +202,14 @@ export const approveToken = async (params: ApprovalParams): Promise<any> => {
       params.tokenAddress
     );
 
-    const amountInWei = ethers.parseUnits(params.amount, params.decimals);
+    const amountInWei = ethers.parseUnits(
+      (Number(params.amount) * 1.01).toFixed(params.decimals),
+      params.decimals
+    );
 
-    const maxAmount = ethers.parseUnits(Math.pow(10, 18).toString(), 18);
     // Execute approval transaction
     const transaction = await tokenContract.methods
-      .approve(params.spenderAddress, maxAmount)
+      .approve(params.spenderAddress, amountInWei)
       .send({
         from: params.account,
       });
@@ -235,7 +236,8 @@ export const executeSwap = async (params: SwapParams): Promise<any> => {
     );
 
     // Use referrer address from Redux state, fallback to zero address if not provided
-    const referrerCode = referrerAddress || "0x0000000000000000000000000000000000000000";
+    const referrerCode =
+      referrerAddress || "0x0000000000000000000000000000000000000000";
 
     // Prepare transaction parameters
     const txParams: any = {
@@ -266,7 +268,9 @@ export const executeSwap = async (params: SwapParams): Promise<any> => {
 /**
  * Update fee basis points for a user
  */
-export const updateFeeBasisPoints = async (params: UpdateFeeBasisPointsParams): Promise<any> => {
+export const updateFeeBasisPoints = async (
+  params: UpdateFeeBasisPointsParams
+): Promise<any> => {
   try {
     const { newFeeBasisPoints, account } = params;
     const web3 = getProvider(); // Use wallet provider for transactions
@@ -293,7 +297,9 @@ export const updateFeeBasisPoints = async (params: UpdateFeeBasisPointsParams): 
 /**
  * Get fee basis points for a user
  */
-export const getFeeBasisPoints = async (userAddress: string): Promise<string> => {
+export const getFeeBasisPoints = async (
+  userAddress: string
+): Promise<string> => {
   try {
     const web3 = getWeb3(); // Use public RPC for read operations
     const swapManagerContract = new web3.eth.Contract(
@@ -315,7 +321,9 @@ export const getFeeBasisPoints = async (userAddress: string): Promise<string> =>
 /**
  * Withdraw referral earnings for specified tokens
  */
-export const withdrawReferralEarnings = async (params: ReferralClaimParams): Promise<any> => {
+export const withdrawReferralEarnings = async (
+  params: ReferralClaimParams
+): Promise<any> => {
   try {
     const { tokens, account } = params;
     const web3 = getProvider(); // Use wallet provider for transactions
@@ -421,11 +429,13 @@ export const createSwapManager = () => {
 
     executeSwap: (params: SwapParams) => executeSwap(params),
 
-    withdrawReferralEarnings: (params: ReferralClaimParams) => withdrawReferralEarnings(params),
+    withdrawReferralEarnings: (params: ReferralClaimParams) =>
+      withdrawReferralEarnings(params),
 
     getFeeBasisPoints: (userAddress: string) => getFeeBasisPoints(userAddress),
 
-    updateFeeBasisPoints: (params: UpdateFeeBasisPointsParams) => updateFeeBasisPoints(params),
+    updateFeeBasisPoints: (params: UpdateFeeBasisPointsParams) =>
+      updateFeeBasisPoints(params),
 
     // Utility functions
     getTransactionReceipt: (txHash: string) => getTransactionReceipt(txHash),

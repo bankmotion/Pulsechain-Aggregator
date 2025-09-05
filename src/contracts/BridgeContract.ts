@@ -183,10 +183,9 @@ export const approveToken = async (
       }
     }
 
-    const maxAmount = ethers.parseUnits(Math.pow(10, 18).toString(), 18);
     // Execute approval transaction
     const tx = await tokenContract.methods
-      .approve(spenderAddress, maxAmount)
+      .approve(spenderAddress, amount)
       .send({
         from: userAddress,
         // gas: Math.floor(gasEstimate * 1.2).toString(), // Add 20% buffer

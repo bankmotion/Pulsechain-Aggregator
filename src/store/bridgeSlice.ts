@@ -11,6 +11,7 @@ import {
   initializeBridgeManager,
 } from "../contracts/BridgeContract";
 import { BackendURL } from "../const/swap";
+import { ethers } from "ethers";
 
 export interface BridgeToken {
   name: string;
@@ -281,13 +282,14 @@ export const bridgeTokens = createAsyncThunk(
   ) => {
     try {
       // Convert amount to wei
-      const amountInWei = (
-        parseFloat(amount) * Math.pow(10, token.decimals)
-      ).toString();
+      const amountInWei = ethers.parseUnits(
+        parseFloat(amount).toFixed(token.decimals),
+        token.decimals
+      );
 
       const bridgeParams: BridgeParams = {
         tokenAddress: token.address,
-        amount: amountInWei,
+        amount: amountInWei.toString(),
         receiver: userAddress,
         chainId: fromChainId,
       };
@@ -309,11 +311,16 @@ export const bridgeTokens = createAsyncThunk(
           token.address
         );
 
+        const approveAmountInWei = ethers.parseUnits(
+          (Number(amount) * 1.01).toFixed(token.decimals),
+          token.decimals
+        );
+
         // Handle approval with state management
         const approvalPerformed = await handleTokenApproval(
           token.address,
           bridgeManagerAddress,
-          amountInWei,
+          approveAmountInWei.toString(),
           fromChainId,
           userAddress,
           () => {
