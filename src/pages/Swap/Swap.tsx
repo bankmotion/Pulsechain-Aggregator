@@ -77,8 +77,8 @@ const Swap: React.FC = () => {
       const requiredAmountWei = ethers.parseUnits(fromAmount, fromToken.decimals);
       
       const currentBalanceWei = fromToken.address === ZeroAddress
-        ? BigInt(nativeBalance)
-        : BigInt(fromTokenBalance);
+        ? ethers.parseUnits(nativeBalance, 18) // Convert native balance to Wei
+        : ethers.parseUnits(fromTokenBalance, fromToken.decimals); // Convert token balance to Wei
 
       return currentBalanceWei >= requiredAmountWei;
     } catch (error) {

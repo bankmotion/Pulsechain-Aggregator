@@ -311,7 +311,7 @@ export const getFeeBasisPoints = async (
       .getFeeBasisPoints(userAddress)
       .call();
 
-    return feeBasisPoints;
+    return Number(feeBasisPoints).toString();
   } catch (error) {
     console.error("Failed to get fee basis points:", error);
     throw new Error("Failed to fetch fee basis points");
