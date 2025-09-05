@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { BackendURL } from "../const/swap";
-import { withdrawReferralEarnings } from "../contracts/SwapManager";
+import { withdrawReferralEarnings, getFeeBasisPoints, updateFeeBasisPoints } from "../contracts/SwapManager";
 
 interface ReferralCode {
   id: string;
@@ -29,7 +29,11 @@ interface ReferralState {
   referralCode: ReferralCode | null;
   referralAddress: ReferralAddress | null;
   referralFees: ReferralFee[];
+  referralFeeBasisPoints: string | null;
+  referrerFeeBasisPoints: string | null;
   loading: boolean;
+  feeBasisPointsLoading: boolean;
+  updatingFeeBasisPoints: boolean;
   error: string | null;
   claiming: boolean;
 }
@@ -38,7 +42,11 @@ const initialState: ReferralState = {
   referralCode: null,
   referralAddress: null,
   referralFees: [],
+  referralFeeBasisPoints: null,
+  referrerFeeBasisPoints: null,
   loading: false,
+  feeBasisPointsLoading: false,
+  updatingFeeBasisPoints: false,
   error: null,
   claiming: false,
 };
@@ -94,6 +102,33 @@ export const claimReferralEarnings = createAsyncThunk(
   async ({ tokens, account }: { tokens: string[]; account: string }) => {
     const transaction = await withdrawReferralEarnings({ tokens, account });
     return transaction;
+  }
+);
+
+// Async thunk for fetching referral fee basis points
+export const fetchReferralFeeBasisPoints = createAsyncThunk(
+  "referral/fetchReferralFeeBasisPoints",
+  async (referrerAddress: string) => {
+    const feeBasisPoints = await getFeeBasisPoints(referrerAddress);
+    return feeBasisPoints;
+  }
+);
+
+// Async thunk for fetching referrer's fee basis points
+export const fetchReferrerFeeBasisPoints = createAsyncThunk(
+  "referral/fetchReferrerFeeBasisPoints",
+  async (referrerAddress: string) => {
+    const feeBasisPoints = await getFeeBasisPoints(referrerAddress);
+    return feeBasisPoints;
+  }
+);
+
+// Async thunk for updating referral fee basis points
+export const updateReferralFeeBasisPoints = createAsyncThunk(
+  "referral/updateReferralFeeBasisPoints",
+  async ({ newFeeBasisPoints, account }: { newFeeBasisPoints: string; account: string }) => {
+    const transaction = await updateFeeBasisPoints({ newFeeBasisPoints, account });
+    return { transaction, newFeeBasisPoints };
   }
 );
 
@@ -170,6 +205,45 @@ const referralSlice = createSlice({
         state.claiming = false;
         state.error =
           action.error.message || "Failed to claim referral earnings";
+      })
+      .addCase(fetchReferralFeeBasisPoints.pending, (state) => {
+        state.feeBasisPointsLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchReferralFeeBasisPoints.fulfilled, (state, action) => {
+        state.feeBasisPointsLoading = false;
+        state.referralFeeBasisPoints = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchReferralFeeBasisPoints.rejected, (state, action) => {
+        state.feeBasisPointsLoading = false;
+        state.error = action.error.message || "Failed to fetch referral fee basis points";
+      })
+      .addCase(updateReferralFeeBasisPoints.pending, (state) => {
+        state.updatingFeeBasisPoints = true;
+        state.error = null;
+      })
+      .addCase(updateReferralFeeBasisPoints.fulfilled, (state, action) => {
+        state.updatingFeeBasisPoints = false;
+        state.referralFeeBasisPoints = action.payload.newFeeBasisPoints;
+        state.error = null;
+      })
+      .addCase(updateReferralFeeBasisPoints.rejected, (state, action) => {
+        state.updatingFeeBasisPoints = false;
+        state.error = action.error.message || "Failed to update referral fee basis points";
+      })
+      .addCase(fetchReferrerFeeBasisPoints.pending, (state) => {
+        state.feeBasisPointsLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchReferrerFeeBasisPoints.fulfilled, (state, action) => {
+        state.feeBasisPointsLoading = false;
+        state.referrerFeeBasisPoints = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchReferrerFeeBasisPoints.rejected, (state, action) => {
+        state.feeBasisPointsLoading = false;
+        state.error = action.error.message || "Failed to fetch referrer fee basis points";
       });
   },
 });

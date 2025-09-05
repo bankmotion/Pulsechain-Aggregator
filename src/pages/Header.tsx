@@ -9,10 +9,15 @@ import {
   useReferralCode,
   useReferralLoading,
   useReferralAddress,
+  useReferralFeeBasisPoints,
+  useReferralFeeBasisPointsLoading,
+  useReferrerFeeBasisPoints,
 } from "../store/hooks";
 import {
   fetchReferralCode,
   fetchReferralAddress,
+  fetchReferralFeeBasisPoints,
+  fetchReferrerFeeBasisPoints,
   clearReferralCode,
   clearReferralAddress,
 } from "../store/referralSlice";
@@ -21,6 +26,7 @@ import {
   getStoredReferralCode,
   hasReferralCodeInUrl,
   isSelfReferral,
+  formatFeeBasisPoints,
 } from "../utils/referralUtils";
 
 const Header = () => {
@@ -31,6 +37,9 @@ const Header = () => {
   const referralCodeData = useReferralCode();
   const referralLoading = useReferralLoading();
   const referralAddressData = useReferralAddress();
+  const referralFeeBasisPoints = useReferralFeeBasisPoints();
+  const referralFeeBasisPointsLoading = useReferralFeeBasisPointsLoading();
+  const referrerFeeBasisPoints = useReferrerFeeBasisPoints();
 
   const isActive = (path: string) => {
     return (
@@ -87,6 +96,19 @@ const Header = () => {
       console.log("Self-referral detected in header, hiding referral info");
     }
   }, [account, referralAddressData]);
+
+  // Fetch referral fee basis points when we have a referral address
+  useEffect(() => {
+    if (referralAddressData && !referralFeeBasisPoints) {
+      dispatch(fetchReferralFeeBasisPoints(referralAddressData.address));
+    }
+  }, [dispatch, referralAddressData, referralFeeBasisPoints]);
+
+  useEffect(() => {
+    if (referralAddressData && !referrerFeeBasisPoints) {
+      dispatch(fetchReferrerFeeBasisPoints(referralAddressData.address));
+    }
+  }, [dispatch, referralAddressData?.address, referrerFeeBasisPoints]);
 
   const handleReferralCodeCopy = async () => {
     try {
@@ -274,6 +296,15 @@ const Header = () => {
                               <p className="text-xs text-slate-400">
                                 Code: {referralAddressData.referralCode}
                               </p>
+                              {referralFeeBasisPointsLoading ? (
+                                <p className="text-xs text-slate-400">
+                                  Loading fee...
+                                </p>
+                              ) : referrerFeeBasisPoints ? (
+                                <p className="text-xs text-emerald-400 font-medium">
+                                  Fee: {formatFeeBasisPoints(referrerFeeBasisPoints)}
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                         </div>

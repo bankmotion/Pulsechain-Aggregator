@@ -29,6 +29,11 @@ export interface ReferralClaimParams {
   account: string;
 }
 
+export interface UpdateFeeBasisPointsParams {
+  newFeeBasisPoints: string;
+  account: string;
+}
+
 export const getWeb3 = () =>
   new Web3(
     PulseChainConfig.providerList[
@@ -259,6 +264,55 @@ export const executeSwap = async (params: SwapParams): Promise<any> => {
 };
 
 /**
+ * Update fee basis points for a user
+ */
+export const updateFeeBasisPoints = async (params: UpdateFeeBasisPointsParams): Promise<any> => {
+  try {
+    const { newFeeBasisPoints, account } = params;
+    const web3 = getProvider(); // Use wallet provider for transactions
+    const swapManagerContract = new web3.eth.Contract(
+      SwapManagerABI as unknown as AbiItem[],
+      SwapManagerAddress
+    );
+    console.log(newFeeBasisPoints, account);
+
+    // Execute fee basis points update transaction
+    const transaction = await swapManagerContract.methods
+      .updateFeeBasisPoints(newFeeBasisPoints)
+      .send({ from: account });
+
+    await waitForTransaction(transaction.transactionHash, 1);
+
+    return transaction;
+  } catch (error) {
+    console.error("Fee basis points update failed:", error);
+    throw new Error("Fee basis points update failed");
+  }
+};
+
+/**
+ * Get fee basis points for a user
+ */
+export const getFeeBasisPoints = async (userAddress: string): Promise<string> => {
+  try {
+    const web3 = getWeb3(); // Use public RPC for read operations
+    const swapManagerContract = new web3.eth.Contract(
+      SwapManagerABI as unknown as AbiItem[],
+      SwapManagerAddress
+    );
+
+    const feeBasisPoints: string = await swapManagerContract.methods
+      .getFeeBasisPoints(userAddress)
+      .call();
+
+    return feeBasisPoints;
+  } catch (error) {
+    console.error("Failed to get fee basis points:", error);
+    throw new Error("Failed to fetch fee basis points");
+  }
+};
+
+/**
  * Withdraw referral earnings for specified tokens
  */
 export const withdrawReferralEarnings = async (params: ReferralClaimParams): Promise<any> => {
@@ -283,7 +337,6 @@ export const withdrawReferralEarnings = async (params: ReferralClaimParams): Pro
     throw new Error("Referral earnings withdrawal failed");
   }
 };
-
 /**
  * Get transaction receipt
  */
@@ -369,6 +422,10 @@ export const createSwapManager = () => {
     executeSwap: (params: SwapParams) => executeSwap(params),
 
     withdrawReferralEarnings: (params: ReferralClaimParams) => withdrawReferralEarnings(params),
+
+    getFeeBasisPoints: (userAddress: string) => getFeeBasisPoints(userAddress),
+
+    updateFeeBasisPoints: (params: UpdateFeeBasisPointsParams) => updateFeeBasisPoints(params),
 
     // Utility functions
     getTransactionReceipt: (txHash: string) => getTransactionReceipt(txHash),

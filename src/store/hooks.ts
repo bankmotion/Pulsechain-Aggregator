@@ -15,6 +15,10 @@ export const useReferralState = () => useSelector((state: RootState) => state.re
 export const useReferralCode = () => useSelector((state: RootState) => state.referral.referralCode);
 export const useReferralAddress = () => useSelector((state: RootState) => state.referral.referralAddress);
 export const useReferralFees = () => useSelector((state: RootState) => state.referral.referralFees);
+export const useReferralFeeBasisPoints = () => useSelector((state: RootState) => state.referral.referralFeeBasisPoints);
+export const useReferralFeeBasisPointsLoading = () => useSelector((state: RootState) => state.referral.feeBasisPointsLoading);
+export const useReferralUpdatingFeeBasisPoints = () => useSelector((state: RootState) => state.referral.updatingFeeBasisPoints);
+export const useReferrerFeeBasisPoints = () => useSelector((state: RootState) => state.referral.referrerFeeBasisPoints);
 export const useReferralLoading = () => useSelector((state: RootState) => state.referral.loading);
 export const useReferralError = () => useSelector((state: RootState) => state.referral.error);
 export const useReferralClaiming = () => useSelector((state: RootState) => state.referral.claiming); 

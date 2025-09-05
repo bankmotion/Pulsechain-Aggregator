@@ -9,7 +9,7 @@ export enum TokenGlobTag {
 
 export const ZeroAddress = "0x0000000000000000000000000000000000000000";
 
-export const SwapManagerAddress = "0x85C4cF58F80d042A2f415343De69DB3B1D7A03a0";
+export const SwapManagerAddress = "0x484f957900F15919f9d3D48e70703d66f34A22DE";
 export const BridgeManagerAddress =
   "0x1715a3E4A142d8b698131108995174F37aEBA10D";
 export const BridgeManagerAddressForNative =

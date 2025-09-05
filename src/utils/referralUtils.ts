@@ -1,3 +1,19 @@
+/**
+ * Format fee basis points to percentage
+ * @param feeBasisPoints - The fee basis points as a string
+ * @returns Formatted percentage string
+ */
+export const formatFeeBasisPoints = (feeBasisPoints: string): string => {
+  try {
+    const fee = parseInt(feeBasisPoints);
+    if (isNaN(fee)) return "0.00%";
+    return `${(fee / 100).toFixed(2)}%`;
+  } catch (error) {
+    console.error('Error formatting fee basis points:', error);
+    return "0.00%";
+  }
+};
+
 // Utility functions for handling referral codes
 
 export const REFERRAL_CODE_KEY = 'pulsechain_referral_code';

@@ -1,5 +1,6 @@
 import { Cog6ToothIcon } from "@heroicons/react/24/solid";
 import { ArrowPathIcon } from "@heroicons/react/24/solid";
+import { CurrencyDollarIcon } from "@heroicons/react/24/solid";
 import { motion } from "framer-motion";
 import React from "react";
 import { Link } from "react-router-dom";
@@ -8,6 +9,7 @@ interface SwapHeaderProps {
   slippage: number;
   onSlippageClick: () => void;
   onRefreshClick: () => void;
+  onReferralFeeClick: () => void;
   isRefreshing?: boolean;
 }
 
@@ -15,6 +17,7 @@ const SwapHeader: React.FC<SwapHeaderProps> = ({
   slippage, 
   onSlippageClick, 
   onRefreshClick, 
+  onReferralFeeClick,
   isRefreshing = false 
 }) => {
   return (
@@ -43,6 +46,17 @@ const SwapHeader: React.FC<SwapHeaderProps> = ({
           <Cog6ToothIcon
             className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 cursor-pointer"
             onClick={onSlippageClick}
+          />
+        </motion.div>
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          transition={{ duration: 0.2 }}
+          className="cursor-pointer"
+        >
+          <CurrencyDollarIcon
+            className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400 hover:text-emerald-300 transition-colors"
+            onClick={onReferralFeeClick}
           />
         </motion.div>
         <Link to="/referrals">
