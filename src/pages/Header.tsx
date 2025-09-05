@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import CustomConnectButton from "../components/CustomConnectButton";
+import NetworkIndicator from "../components/NetworkIndicator";
 import useWallet from "../hooks/useWallet";
 import { toast } from "react-toastify";
 import {

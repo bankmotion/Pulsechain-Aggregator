@@ -6,13 +6,18 @@ import AppRoutes from "./routes";
 import Header from "./pages/Header";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import NetworkWarning from "./components/NetworkWarning";
 
 function App() {
   return (
     <Provider store={store}>
       <Router>
-        <div className="min-h-screen bg-[#0f1123] text-white">
+        <div className="min-h-screen bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#16213e]">
           <Header />
+          
+          {/* Network Warning - shows when on wrong network */}
+          <NetworkWarning />
+          
           <main className="">
             <AppRoutes />
           </main>

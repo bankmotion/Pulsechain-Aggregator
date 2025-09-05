@@ -1,10 +1,44 @@
 import { useConnectWallet } from "@web3-onboard/react";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PulseChainConfig, EthereumConfig } from "../config/chainConfig";
 
 const useWallet = () => {
   const [{ wallet }, connect, disconnect] = useConnectWallet();
   const account = wallet ? wallet.accounts[0].address : "";
+  const [currentChainId, setCurrentChainId] = useState<number | null>(null);
+
+  // Get current chain ID
+  useEffect(() => {
+    const getCurrentChainId = async () => {
+      if (wallet?.provider) {
+        try {
+          const chainId = await wallet.provider.request({
+            method: "eth_chainId",
+          });
+          setCurrentChainId(parseInt(chainId, 16));
+        } catch (error) {
+          console.error("Failed to get current chain ID:", error);
+        }
+      } else {
+        setCurrentChainId(null);
+      }
+    };
+
+    getCurrentChainId();
+
+    // Listen for chain changes
+    if (wallet?.provider) {
+      const handleChainChanged = (chainId: string) => {
+        setCurrentChainId(parseInt(chainId, 16));
+      };
+
+      wallet.provider.on("chainChanged", handleChainChanged);
+
+      return () => {
+        wallet.provider.removeListener("chainChanged", handleChainChanged);
+      };
+    }
+  }, [wallet]);
 
   const switchToChain = useCallback(
     async (chainId: number) => {
@@ -22,7 +56,7 @@ const useWallet = () => {
         try {
           const provider = wallet.provider;
           if (provider && provider.request) {
-            await provider.request({
+            await wallet.provider.request({
               method: "wallet_addEthereumChain",
               params: [
                 {
@@ -40,7 +74,7 @@ const useWallet = () => {
             });
           }
         } catch (addError) {
-          console.error(`Failed to add chain ${chainId}:`, addError);
+          console.error(`Failed to add chain ${chainId}:`, error);
         }
       }
     },
@@ -76,6 +110,22 @@ const useWallet = () => {
     }
   }, [disconnect, wallet]);
 
+  // Helper functions for network detection
+  const getCurrentNetworkName = () => {
+    if (currentChainId === 1) return "Ethereum";
+    if (currentChainId === 369) return "PulseChain";
+    return "Unknown";
+  };
+
+  const getCurrentNetworkSymbol = () => {
+    if (currentChainId === 1) return "ETH";
+    if (currentChainId === 369) return "PLS";
+    return "?";
+  };
+
+  const isOnEthereum = () => currentChainId === 1;
+  const isOnPulseChain = () => currentChainId === 369;
+
   return {
     account,
     connectWallet,
@@ -84,6 +134,11 @@ const useWallet = () => {
     switchToEthereum,
     switchToChain,
     wallet,
+    currentChainId,
+    getCurrentNetworkName,
+    getCurrentNetworkSymbol,
+    isOnEthereum,
+    isOnPulseChain,
   };
 };
 
