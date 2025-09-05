@@ -73,13 +73,18 @@ const Swap: React.FC = () => {
   const hasSufficientBalance = () => {
     if (!fromToken || !fromAmount) return false;
 
-    const requiredAmount = parseFloat(fromAmount);
-    const currentBalance =
-      fromToken.address === ZeroAddress
-        ? parseFloat(nativeBalance)
-        : parseFloat(fromTokenBalance);
+    try {
+      const requiredAmountWei = ethers.parseUnits(fromAmount, fromToken.decimals);
+      
+      const currentBalanceWei = fromToken.address === ZeroAddress
+        ? BigInt(nativeBalance)
+        : BigInt(fromTokenBalance);
 
-    return currentBalance >= requiredAmount;
+      return currentBalanceWei >= requiredAmountWei;
+    } catch (error) {
+      console.error("Error checking balance:", error);
+      return false;
+    }
   };
 
   const handleExchangeTokenPlace = () => {

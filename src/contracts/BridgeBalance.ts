@@ -2,7 +2,7 @@ import Web3 from "web3";
 import { AbiItem } from "web3-utils";
 import ERC20ABI from "../abis/ERC20.json";
 import { PulseChainConfig, EthereumConfig } from "../config/chainConfig";
-import { ZeroAddress } from "ethers";
+import { ZeroAddress, formatUnits, parseUnits } from "ethers";
 
 export interface BalanceParams {
   tokenAddress: string;
@@ -90,15 +90,19 @@ export const getFormattedTokenBalance = async (params: BalanceParams): Promise<s
   
   try {
     const balanceWei = await getTokenBalance(params);
-    const balanceNumber = parseFloat(balanceWei);
     
-    if (isNaN(balanceNumber)) {
+    if (balanceWei === "0") {
       return "0.00";
     }
     
-    // Convert from wei to human readable format
-    const balanceHuman = balanceNumber / Math.pow(10, decimals);
-    return balanceHuman.toFixed(6);
+    const balanceHuman = formatUnits(balanceWei, decimals);
+    
+    const parts = balanceHuman.split('.');
+    if (parts.length === 1) {
+      return `${parts[0]}.000000`;
+    }
+    const decimalsStr = parts[1].padEnd(6, '0').substring(0, 6);
+    return `${parts[0]}.${decimalsStr}`;
   } catch (error) {
     console.error("Error formatting token balance:", error);
     return "0.00";
@@ -147,10 +151,13 @@ export const hasSufficientBalance = async (
 ): Promise<boolean> => {
   try {
     const balanceWei = await getTokenBalance({ tokenAddress, account, chainId, decimals });
-    const requiredAmount = parseFloat(amount);
-    const currentBalance = parseFloat(balanceWei);
     
-    return currentBalance >= requiredAmount;
+    // Convert required amount to wei using parseUnits (safe)
+    const requiredAmountWei = parseUnits(amount, decimals);
+    const balanceWeiBigInt = BigInt(balanceWei);
+    
+    // Use BigInt comparison for precision
+    return balanceWeiBigInt >= requiredAmountWei;
   } catch (error) {
     console.error("Error checking sufficient balance:", error);
     return false;
