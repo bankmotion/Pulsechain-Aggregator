@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
 import React from "react";
 import { TokenType } from "../../../types/Swap";
+import ProviderIcon from "../../../components/ProviderIcon";
+import useWallet from "../../../hooks/useWallet";
+import AddToWalletButton from "../../../components/AddToWalletButton";
 
 interface AmountInputProps {
   amount: string;
@@ -27,6 +30,14 @@ const AmountInput: React.FC<AmountInputProps> = ({
   onCopyAddress,
   onAddToWallet,
 }) => {
+  // Use the injected EIP-1193 provider from web3-onboard (unwrap if wrapped)
+  const { wallet, account, currentChainId } = useWallet();
+  const injected =
+    (wallet as any)?.provider?.provider ??
+    (wallet as any)?.provider ??
+    null;
+  const isConnected = !!account;
+
   const formatAmount = (value: string) => {
     if (!value) return "";
     if (value.includes(".")) {
@@ -79,6 +90,14 @@ const AmountInput: React.FC<AmountInputProps> = ({
     return `$${priceValue.toFixed(2)}`;
   };
 
+  // Only show Add-to-wallet for non-Ethereum networks (prefer PulseChain)
+  const isTokenOnEthereum = (t?: TokenType | null) => {
+    if (!t) return false;
+    const n1 = (t.blockchainNetwork || "").toLowerCase();
+    const n2 = (t.network || "").toLowerCase();
+    return n1 === "ethereum" || n1 === "eth" || n2 === "ethereum" || n2 === "eth";
+  };
+
   return (
     <motion.div className="flex flex-col items-end justify-center gap-2 w-full sm:w-auto">
       <div className="flex items-center justify-between w-full">
@@ -107,7 +126,7 @@ const AmountInput: React.FC<AmountInputProps> = ({
           </div>
         )}
         
-        {/* Smaller Button Group - Always Show for Both Input and Output */}
+        {/* Consistent Button Group - Always Show for Both Input and Output */}
         <div className="flex items-center space-x-1">
           {/* MAX Button - Only for Input */}
           {!isOutput && (
@@ -116,7 +135,7 @@ const AmountInput: React.FC<AmountInputProps> = ({
               whileTap={{ scale: 0.95 }}
               onClick={handleMaxClick}
               disabled={balanceLoading || parseFloat(balance || "0") <= 0}
-              className="px-2 py-1.5 text-xs bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] text-gray-300 rounded-md hover:from-[#4a4f6a] hover:to-[#3a3f5a] hover:text-white transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-[#4a4f6a] hover:border-[#5a5f7a] flex-shrink-0"
+              className="px-3 py-3 text-xs bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] text-gray-300 rounded-lg hover:from-[#4a4f6a] hover:to-[#3a3f5a] hover:text-white transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed border border-[#4a4f6a] hover:border-[#5a5f7a] flex-shrink-0"
             >
               MAX
             </motion.button>
@@ -128,11 +147,11 @@ const AmountInput: React.FC<AmountInputProps> = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={onCopyAddress}
-              className="px-2 py-1.5 text-xs bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] text-gray-300 rounded-md hover:from-[#4a4f6a] hover:to-[#3a3f5a] hover:text-white transition-all duration-200 font-medium border border-[#4a4f6a] hover:border-[#5a5f7a] flex-shrink-0"
+              className="px-3 py-3 text-xs bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] text-gray-300 rounded-lg hover:from-[#4a4f6a] hover:to-[#3a3f5a] hover:text-white transition-all duration-200 font-medium border border-[#4a4f6a] hover:border-[#5a5f7a] flex-shrink-0"
               title="Copy token address"
             >
               <svg
-                className="w-3 h-3"
+                className="w-4 h-4"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -147,18 +166,21 @@ const AmountInput: React.FC<AmountInputProps> = ({
             </motion.button>
           )}
 
-          {/* Add to Wallet Button - For Both Input and Output */}
-          {token && onAddToWallet && (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onAddToWallet}
-              className="px-2 py-1.5 text-xs bg-gradient-to-r from-[#3a3f5a] to-[#2b2e4a] text-gray-300 rounded-md hover:from-[#4a4f6a] hover:to-[#3a3f5a] hover:text-white transition-all duration-200 font-medium border border-[#4a4f6a] hover:border-[#5a5f7a] flex-shrink-0"
-              title="Add to MetaMask"
-            >
-              <img src="/metamask.png" alt="MetaMask" className="w-3 h-3" />
-            </motion.button>
-          )}
+          {/* Add to Wallet Button - Provider-aware icon */}
+          {token && !isTokenOnEthereum(token) && isConnected ? (
+            <AddToWalletButton
+              token={{
+                address: token.address,
+                symbol: token.symbol,
+                decimals: token.decimals,
+                // Swap currently targets PulseChain; align with existing implementation
+                chainId: 369,
+              }}
+              variant="outline"
+              size="sm"
+              className="flex-shrink-0"
+            />
+          ) : null}
         </div>
       </div>
       
